@@ -1,0 +1,41 @@
+[06/10/2026, 08:02:11] Les messages et les appels sont chiffres de bout en bout.
+[06/10/2026, 08:02:11] Awa a ajoute +225 07 00 00 00 00.
+06/10/2026 09:20 - Awa: Bonjour, c'est combien le sac en cuir marron ?
+[06/10/2026, 09:09:25] Ma boutique: Bonjour Awa, le sac en cuir est a 15 000 F
+[06/10/2026, 10:41:03] Fatou: Bonjour, vous livrez a Yopougon ?
+[06/10/2026, 11:04:52] Ibrahim: C'est combien la sacoche ? Et tu livres a Bouake ?
+[06/10/2026, 11:34:06] Ma boutique: La sacoche est a 12 000 F. Livraison a Bouake 2 000 F
+[06/10/2026, 12:23:37] Adjoua: Bonsoir, le prix du grand sac noir ?
+[06/10/2026, 13:03:58] Yao: Est-ce que c'est du vrai cuir ? J'ai peur que ce soit du faux
+[06/10/2026, 14:32:13] Mariam: C'est trop cher pour moi. Tu ne peux pas reduire un peu ?
+[06/10/2026, 14:02:05] Serge: Tu livres dans combien de temps sur Cocody ?
+06/10/2026 15:27 - Aminata: Bonjour, je suis a Daloa, vous livrez ?
+[06/10/2026, 15:26:04] Koffi: C'est dispo en noir ?
+[06/10/2026, 16:15:05] Nadia: Je vais reflechir et je te reviens
+[07/10/2026, 17:35:27] Awa: Tu prends Wave ?
+[07/10/2026, 18:03:52] Fatou: Et si ca ne va pas, est-ce qu'on peut echanger ?
+[07/10/2026, 19:36:07] Ibrahim: Envoie la photo de la vraie couleur stp
+[07/10/2026, 20:14:40] Adjoua: Le sac est solide ? Je veux pas qu'il deraille apres deux semaines
+[07/10/2026, 21:40:37] Yao: Combien la livraison a Abobo ?
+[07/10/2026, 12:03:36] Awa: Tu as encore le modele beige ?
+07/10/2026 13:37 - Mariam: C'est combien le petit ? Je cherche un cadeau
+[07/10/2026, 14:25:03] Serge: Vous etes ou exactement ? Je ne te connais pas
+[07/10/2026, 15:14:02] Aminata: Le prix est negocie ? Je prends deux si tu fais un effort
+[07/10/2026, 16:35:54] Koffi: Est-ce que c'est en stock ? Je peux venir aujourd'hui
+[07/10/2026, 17:08:18] Nadia: Vous faites du paiement a la livraison ?
+[07/10/2026, 18:26:09] Awa: Ma copine a deja commande chez vous, elle dit que la qualite est bien
+[08/10/2026, 19:34:07] Fatou: Il reste des sacs en cuir noir ?
+[08/10/2026, 19:36:19] Ma boutique: Oui il en reste 4
+[08/10/2026, 20:35:52] Ibrahim: Le prix du modele blanc ?
+08/10/2026 08:43 - Yao: Bonjour, c'est combien ?
+[08/10/2026, 08:11:06] Mariam: Livraison gratuite a partir de combien ?
+[08/10/2026, 21:37:36] Serge: C'est trop cher, j'ai vu moins cher ailleurs
+[08/10/2026, 13:40:12] Aminata: Vous livrez a San-Pedro ?
+[08/10/2026, 14:23:06] Koffi: Combien de litres il fait ? Il est grand ?
+[08/10/2026, 15:35:45] Nadia: On peut payer en deux tranches ?
+[08/10/2026, 16:04:36] Awa: Je commande, tu livres demain ?
+[08/10/2026, 10:15:00] Adjoua: Bonjour, je suis a Yopougon
+et je voudrais le grand sac noir
+c'est combien avec la livraison ?
+[08/10/2026, 10:40:00] Les messages et les appels sont chiffres de bout en bout.
+[08/10/2026, 11:00:00] Fatou: Vous etes toujours ouvert ?

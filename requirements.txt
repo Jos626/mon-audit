@@ -1,0 +1,4 @@
+# Aucune dépendance.
+# ⚠️ CE FICHIER EST VOLONTAIREMENT PRESQUE VIDE : le serveur n'utilise que la bibliothèque
+# standard de Python. Sur un hébergement minimal, chaque paquet en plus est une panne en
+# plus (installation qui échoue, version incompatible, mémoire limitée à 512 Mo).

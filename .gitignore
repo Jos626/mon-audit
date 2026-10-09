@@ -1,0 +1,11 @@
+# ⛔ CE QUI NE DOIT JAMAIS PARTIR EN LIGNE.
+# Les dossiers clients contiennent les conversations et les exports des commerçants : ils restent
+# sur le poste, hors du dépôt. Un dépôt est fait pour être publié — un fichier client n'a rien à y
+# faire, même « en privé ».
+clients/
+*.sqlite3
+battement.json
+bot-sortie.log
+recu-*
+__pycache__/
+*.pyc

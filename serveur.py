@@ -93,6 +93,9 @@ def url_de_connexion(app_id, adresse_publique, etat):
 
 def echanger_le_code(code, app_id, app_secret, adresse_publique):
     """Le code devient un jeton — d'abord court, puis LONG (≈ 60 jours)."""
+    if not app_secret:
+        raise ErreurGraph("La clé secrète de l'application n'est pas encore installée sur le "
+                          "serveur : Meta ne peut pas échanger ce code contre un jeton.")
     court = _graph_get("oauth/access_token", {
         "client_id": app_id, "client_secret": app_secret, "code": code,
         "redirect_uri": adresse_publique.rstrip("/") + "/callback"})
@@ -312,7 +315,12 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
 
 if __name__ == "__main__":
     APP_ID = _secret("meta-app-id")
-    APP_SECRET = _secret("meta-app-secret")
+    # ⚠️ LA CLÉ SECRÈTE N'EST PAS EXIGÉE AU DÉMARRAGE (corrigé le 09/10/2026). Elle n'est utilisée
+    # qu'à un seul endroit : l'échange du code contre un jeton, au retour du client. L'exiger ici
+    # empêchait de Mettre le service en ligne avant de l'avoir — et le service aurait refusé de
+    # démarrer pour une valeur dont il n'a pas besoin tant que personne ne se connecte. Elle est
+    # désormais vérifiée au moment de l'usage, avec un message clair à ce moment-là.
+    APP_SECRET = _secret("meta-app-secret", obligatoire=False)
     SECRET_LIENS = _secret("audit-secret-liens")
     ADRESSE = os.environ.get("ADRESSE_PUBLIQUE") or _secret("audit-adresse-publique")
     port = int(os.environ.get("PORT", "8080"))

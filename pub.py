@@ -35,6 +35,9 @@ import urllib.request
 ICI = os.path.dirname(os.path.abspath(__file__))
 SECRET_GROQ = os.path.expanduser("~/.hermes/secrets/groq_api_key")
 MODELE_GROQ = "openai/gpt-oss-120b"
+# Une API gratuite refuse les appels sans en-tête de navigateur (Groq répond 403 sans lui).
+NAVIGATEUR_PUB = ("Mozilla/5.0 (Linux; Android 13; TECNO CAMON 19 Pro) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36")
 
 # ------------------------------------------------------------------ les réglages de sécurité
 PLAFOND_BUDGET = 100000        # F CFA : au-delà, on refuse et on demande confirmation à José
@@ -63,6 +66,60 @@ def francs(montant):
     """« 15000 » devient « 15 000 F CFA » — comme on l'écrit ici."""
     entier = int(round(float(montant)))
     return f"{entier:,}".replace(",", " ") + " F CFA"
+
+
+CACHE_TAUX = os.path.join(ICI, "taux-change.json")
+
+
+def taux_de_change(devise, forcer=False):
+    """Combien vaut 1 franc CFA dans la devise du compte publicitaire.
+
+    ⚠️⚠️ POURQUOI C'EST INDISPENSABLE, ET PAS UN CONFORT. Le compte publicitaire de José est en
+    DOLLARS (« Merveilles », constaté le 10/10/2026) alors qu'il pense en FRANCS. Sans conversion,
+    « budget 15 000 » partirait en 15 000 dollars — neuf millions de francs. La conversion n'est donc
+    pas une politesse : c'est ce qui empêche de brûler le capital.
+
+    Rend le taux, ou None si on ne peut pas l'obtenir — et dans ce cas l'appelant REFUSE d'envoyer
+    plutôt que d'inventer un montant.
+    """
+    if devise == "XOF":
+        return 1.0
+    aujourdhui = time.strftime("%Y-%m-%d")
+    if not forcer:
+        try:
+            with open(CACHE_TAUX, encoding="utf-8") as f:
+                cache = json.load(f)
+            if cache.get("date") == aujourdhui and devise in (cache.get("taux") or {}):
+                return cache["taux"][devise]
+        except (OSError, ValueError):
+            pass
+    try:
+        requete = urllib.request.Request("https://open.er-api.com/v6/latest/XOF",
+                                         headers={"User-Agent": NAVIGATEUR_PUB})
+        with urllib.request.urlopen(requete, timeout=25) as reponse:
+            charge = json.load(reponse)
+        taux = (charge.get("rates") or {}).get(devise)
+    except Exception:  # noqa: BLE001 — pas de taux : on le dira, on n'inventera pas
+        return None
+    if not taux:
+        return None
+    try:
+        with open(CACHE_TAUX, "w", encoding="utf-8") as f:
+            json.dump({"date": aujourdhui, "taux": {devise: taux}}, f)
+    except OSError:
+        pass
+    return taux
+
+
+def convertir(montant_fcfa, devise):
+    """Le montant en francs devient le montant dans la devise du compte. Rend (montant, taux).
+
+    ⚠️ Rend (None, None) si le taux est introuvable : l'appelant doit alors REFUSER, jamais deviner.
+    """
+    taux = taux_de_change(devise)
+    if taux is None:
+        return None, None
+    return montant_fcfa * taux, taux
 
 
 # ------------------------------------------------------------------------------- lecture du texte
@@ -203,8 +260,13 @@ def _sujet_propre(idee, maxi=45):
     return propre or "notre offre"
 
 
-def rediger_avec_modele(idee, cible, budget_jour, duree, support):
-    """Demande les textes au modèle gratuit. Rend None si le modèle ne répond pas (on a un repli)."""
+def rediger_avec_modele(idee, cible, budget_jour, duree, support, lecons=""):
+    """Demande les textes au modèle gratuit. Rend None si le modèle ne répond pas (on a un repli).
+
+    ⚠️ « lecons » EST LE CŒUR DE L'AMÉLIORATION CONTINUE (demande de José, 10/10/2026 : « une même
+    pub doit pouvoir finir par être ultra précise »). On donne au rédacteur ce qui a DÉJÀ été mesuré
+    sur ce compte — sinon chaque nouvelle version repartirait de zéro et rien ne convergerait.
+    """
     try:
         with open(SECRET_GROQ, encoding="utf-8") as f:
             cle = f.read().strip()
@@ -217,6 +279,10 @@ def rediger_avec_modele(idee, cible, budget_jour, duree, support):
         "Écris une publicité Facebook en français simple, pour : " + _sujet_propre(idee, 200) + ".\n"
         f"Cible : {cible['age_min']}-{cible['age_max']} ans, {cible['sexe']}, "
         f"{', '.join(cible['villes']) or 'Côte d’Ivoire'}. Support : {support}.\n"
+    )
+    if lecons:
+        demande += ("\n" + lecons[:1200] + "\nCe qui a marché : imite-le. Ce qui a échoué : évite-le.\n")
+    demande += (
         "Réponds STRICTEMENT en JSON, avec ces clés : "
         '"accroche" (8 mots maximum, percutante), '
         '"principal" (2 à 3 phrases, tutoiement, un bénéfice concret, pas de promesse de gain), '
@@ -346,7 +412,8 @@ def resume(publicite):
 
 # ------------------------------------------------------------------------------------- la fabrique
 def fabriquer(idee, visuel, budget, duree, cible, destination="",
-              lien=None, texte_force=None, ecrire_avec_modele=True, plafond=PLAFOND_BUDGET):
+              lien=None, texte_force=None, ecrire_avec_modele=True, plafond=PLAFOND_BUDGET,
+              lecons=""):
     """Les quatre informations deviennent une publicité complète, vérifiée."""
     budget_total = lire_budget(budget)
     jours = lire_duree(duree)
@@ -367,7 +434,8 @@ def fabriquer(idee, visuel, budget, duree, cible, destination="",
     support = fichier.get("type") or "image"
     textes = texte_force
     if not textes and ecrire_avec_modele:
-        textes = rediger_avec_modele(idee, ciblage, publicite["budget"]["journalier"], jours, support)
+        textes = rediger_avec_modele(idee, ciblage, publicite["budget"]["journalier"], jours, support,
+                                     lecons)
     if not textes:
         textes = textes_de_repli(idee)
     publicite["textes"] = textes

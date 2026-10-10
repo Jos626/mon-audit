@@ -38,9 +38,11 @@
   ✓ « hommes ET femmes » veut dire TOUT LE MONDE (pas la moitié)
   ✓ deux villes sont lues ensemble
 
-=== 7. Les montants envoyés à Meta dépendent de la DEVISE DU COMPTE ===
-  ✓ en franc CFA (pas de centime) : 1 500 reste 1 500
-  ✓ en euro (centimes) : 1 500 devient 150 000
+=== 7. Les montants envoyés à Meta : conversion ET unité ===
+  ✓ en franc CFA : pas de conversion, pas de centime (1 500 reste 1 500)
+  ✓ en DOLLARS (le compte de José) : 1 500 F devient ~2,5 $ — surtout PAS 1 500
+  ✓ le montant part en CENTIMES (×100)
+  ✓ le taux du jour est affiché, pas caché
 
 === 8. L'aperçu à blanc ne crée RIEN et montre tout ===
   ✓ l'aperçu porte l'objectif
@@ -56,4 +58,4 @@
 === 10. Les textes écrits par le modèle sont CONTRÔLÉS ===
   ✓ un texte trop long est signalé (le modèle doit tenir dans les limites de Meta)
 
-=== RÉSULTAT : 37 réussite(s), 0 échec(s), 0 non testé(s) (réseau) ===
+=== RÉSULTAT : 39 réussite(s), 0 échec(s), 0 non testé(s) (réseau) ===

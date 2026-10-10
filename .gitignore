@@ -9,3 +9,9 @@ bot-sortie.log
 recu-*
 __pycache__/
 *.pyc
+# ⛔⛔ LE JETON NE PART JAMAIS EN LIGNE. Ce fichier attend que le téléphone vienne prendre les
+# réglages autorisés : sur un dépôt public, il publierait le droit de dépenser l'argent de José.
+reglages-en-attente.json
+taux-change.json
+pub-journal.log
+publication-journal.log

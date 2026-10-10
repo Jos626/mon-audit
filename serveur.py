@@ -492,6 +492,42 @@ PUBLICATIONS = {}          # identifiant -> {jeton, comptes, pages}, le temps du
 # récupère elle-même (voir recuperer-reglages.py côté téléphone). Consommés une seule fois, puis
 # effacés — un jeton qui traîne est un jeton qui fuite.
 REGLAGES_A_RECUPERER: dict = {"en_attente": None}
+FICHIER_ATTENTE = os.path.join(ICI, "reglages-en-attente.json")
+
+
+def garder_reglages(reglages):
+    """Garde les réglages EN MÉMOIRE **et sur le disque**.
+
+    ⚠️ LE DISQUE COMPTE : l'hébergement gratuit redémarre l'instance (mise en veille, ou simple
+    redéploiement). En mémoire seule, un jeton autorisé par un client serait perdu sans que personne
+    ne comprenne pourquoi — et le client devrait recommencer. Vécu le 10/10/2026.
+    """
+    REGLAGES_A_RECUPERER["en_attente"] = reglages
+    try:
+        with open(FICHIER_ATTENTE, "w", encoding="utf-8") as f:
+            json.dump(reglages, f, ensure_ascii=False)
+        os.chmod(FICHIER_ATTENTE, 0o600)
+    except OSError:
+        pass
+
+
+def prendre_reglages():
+    """Rend les réglages en attente, et n'en laisse AUCUNE trace (un jeton qui traîne est un jeton
+    qui fuite) : mémoire vidée, fichier effacé."""
+    reglages = REGLAGES_A_RECUPERER.get("en_attente")
+    REGLAGES_A_RECUPERER["en_attente"] = None
+    if reglages is None:
+        try:
+            with open(FICHIER_ATTENTE, encoding="utf-8") as f:
+                reglages = json.load(f)
+        except (OSError, ValueError):
+            reglages = None
+    if reglages:
+        try:
+            os.remove(FICHIER_ATTENTE)
+        except OSError:
+            pass
+    return reglages
 
 
 def envoyer_telegram(jeton_bot, chat, texte):
@@ -833,17 +869,18 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                            f"Devise : {reglages['devise']}\n\n"
                            "Ton outil s'installe tout seul — tu n'as rien à copier.")
                 envoye = envoyer_telegram(jeton_bot, fiche["chat"], message)
-                REGLAGES_A_RECUPERER["en_attente"] = reglages
+                garder_reglages(reglages)
                 del PUBLICATIONS[parametres.get("id", "")]
-                # ⚠️ L'INSTALLATION NE DÉPEND PAS DE TELEGRAM : le téléphone vient chercher les
-                # réglages tout seul. Le message n'est qu'un confort — ne pas le présenter comme la
-                # condition de la réussite, sinon on annonce un échec là où tout a marché.
-                suite = ("C'est enregistré. Ton téléphone installe les réglages tout seul dans les "
-                         "dix minutes — tu n'as rien à faire.")
-                if not envoye:
-                    suite += (" (Je n'ai pas pu te prévenir par Telegram : ouvre ta conversation "
-                              "avec le bot et appuie sur DÉMARRER si tu veux être prévenu la "
-                              "prochaine fois.)")
+                # ⚠️ MESSAGE SANS CONDITION, ET SANS MENTION DE TELEGRAM (José, 10/10/2026 : « Le
+                # client sélectionne son compte, sa page et le job commence »). L'installation ne
+                # dépend PAS de Telegram : le téléphone vient chercher les réglages tout seul. Lui
+                # demander d'appuyer sur DÉMARRER au milieu de son parcours, c'était ajouter une
+                # inquiétude et une étape là où il n'y en avait pas.
+                suite = ("Tes réglages sont enregistrés. Ton téléphone les installe tout seul — "
+                         "tu n'as rien à faire.")
+                if not envoye and jeton_bot:
+                    print("[publication] message Telegram non délivré (bot jamais démarré ?)",
+                          flush=True)
                 self._envoyer_html(PAGE_PUB_FIN.replace("__MESSAGE__", suite))
                 return
 
@@ -855,8 +892,7 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                     self._envoyer_octets(json.dumps({"erreur": "secret invalide"}).encode(),
                                          "application/json; charset=utf-8", 403)
                     return
-                reglages = REGLAGES_A_RECUPERER.get("en_attente")
-                REGLAGES_A_RECUPERER["en_attente"] = None
+                reglages = prendre_reglages()
                 self._envoyer_octets(
                     json.dumps({"reglages": reglages}, ensure_ascii=False).encode(),
                     "application/json; charset=utf-8")

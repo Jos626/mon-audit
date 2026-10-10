@@ -108,17 +108,25 @@ verifie("« hommes ET femmes » veut dire TOUT LE MONDE (pas la moitié)",
 verifie("deux villes sont lues ensemble", sorted(cible4["villes"]) == ["Abidjan", "Bouaké"],
         str(cible4["villes"]))
 
-print("\n=== 7. Les montants envoyés à Meta dépendent de la DEVISE DU COMPTE ===")
+print("\n=== 7. Les montants envoyés à Meta : conversion ET unité ===")
 publicite = pub.fabriquer("promo", VISUEL, 15000, 10, "18-45 ans Abidjan", "https://exemple.ci",
                           ecrire_avec_modele=False)
 apercu = publication.apercu_a_blanc(publicite, {"devise": "XOF", "compte_publicitaire": "act_1",
                                                 "page_id": "2"})
-verifie("en franc CFA (pas de centime) : 1 500 reste 1 500",
+verifie("en franc CFA : pas de conversion, pas de centime (1 500 reste 1 500)",
         apercu["budget_journalier_envoye"] == 1500, str(apercu["budget_journalier_envoye"]))
-apercu_eur = publication.apercu_a_blanc(publicite, {"devise": "EUR"})
-verifie("en euro (centimes) : 1 500 devient 150 000",
-        apercu_eur["budget_journalier_envoye"] == 150000,
-        str(apercu_eur["budget_journalier_envoye"]))
+apercu_usd = publication.apercu_a_blanc(publicite, {"devise": "USD"})
+dans_devise = apercu_usd["budget_journalier_dans_la_devise"]
+verifie("en DOLLARS (le compte de José) : 1 500 F devient ~2,5 $ — surtout PAS 1 500",
+        dans_devise is not None and 1 < dans_devise < 10, str(dans_devise),
+        reseau=True)
+if dans_devise:
+    verifie("le montant part en CENTIMES (×100)",
+            apercu_usd["budget_journalier_envoye"] == int(round(dans_devise * 100)),
+            str(apercu_usd["budget_journalier_envoye"]))
+    verifie("le taux du jour est affiché, pas caché",
+            isinstance(apercu_usd["taux_du_jour_1_franc"], float),
+            str(apercu_usd["taux_du_jour_1_franc"]))
 
 print("\n=== 8. L'aperçu à blanc ne crée RIEN et montre tout ===")
 verifie("l'aperçu porte l'objectif", apercu["objectif"] == "OUTCOME_TRAFFIC")

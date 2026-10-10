@@ -1,0 +1,44 @@
+{
+  "idee": "une formation pour creer des agents IA et gagner de l argent",
+  "visuel": {
+    "type": "image",
+    "chemin": "exemples/visuel-test.jpg",
+    "poids": 34010,
+    "erreur": null
+  },
+  "cible": {
+    "pays": [
+      "CI"
+    ],
+    "villes": [
+      "Abidjan"
+    ],
+    "age_min": 18,
+    "age_max": 40,
+    "sexe": "hommes",
+    "langues": [
+      "fr"
+    ],
+    "interets": [],
+    "texte_original": "hommes 18-40 ans Abidjan",
+    "non_compris": []
+  },
+  "destination": "https://t.me/atelierdesagentsiabot",
+  "budget": {
+    "total": 15000,
+    "journalier": 1500,
+    "devise": "XOF"
+  },
+  "duree": {
+    "jours": 10
+  },
+  "textes": {
+    "accroche": "une formation pour creer des agents IA et : ce que personne ne te dit",
+    "principal": "Tu cherches une formation pour creer des agents IA et ? Voici l'essentiel, sans blabla. Clique et découvre en 2 minutes.",
+    "titre": "une formation pour creer des agents IA et — le guide clair",
+    "description": "Explications simples, résultat rapide.",
+    "appel": "En savoir plus"
+  },
+  "textes_par_modele": false,
+  "bloquants": []
+}

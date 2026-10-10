@@ -31,12 +31,19 @@ import urllib.parse
 import urllib.request
 import uuid
 
+import pub
+
 ICI = os.path.dirname(os.path.abspath(__file__))
 SECRET_REGLAGES = os.path.expanduser("~/.hermes/secrets/meta-publicite.json")
 JOURNAL = os.path.join(ICI, "publication-journal.log")
 
 VERSION_API = "v25.0"
 GRAPHE = f"https://graph.facebook.com/{VERSION_API}"
+
+# Les devises sans sous-unité : Meta y compte à l'unité près. Partout ailleurs (dollar, euro…),
+# le montant envoyé est en CENTIMES — d'où le ×100.
+DEVISES_SANS_SOUS_UNITE = ("XOF", "XAF", "JPY", "KRW", "CLP", "VND", "PYG", "RWF", "UGX", "DJF",
+                           "GNF", "KMF", "BIF", "ISK", "HUF", "TWD")
 
 # L'objectif et l'optimisation suivent le but : faire venir du monde (trafic), ou faire écrire
 # (messagerie). Le reste se règle dans pub.py, jamais ici.
@@ -176,6 +183,49 @@ def ciblage_meta(publicite, reglages):
     return ciblage
 
 
+def creer_et_verifier(chemin, parametres, reglages, quoi, champ_liste=None, liste_de=None):
+    """Crée un objet chez Meta ET VÉRIFIE qu'il existe vraiment.
+
+    ⛔⛔ POURQUOI CE N'EST PAS DE LA PARANOÏA (vécu le 10/10/2026) : sur le même appel, Meta rend
+    tantôt « {"id": "…"} », tantôt « {"success": true} » — et dans ce second cas **RIEN n'est créé**,
+    sans le moindre message d'erreur. Un code qui se fie à la réponse enchaîne alors sur une campagne
+    fantôme : ensembles et annonces orphelins, et José qui croit sa publicité en ligne.
+
+    On refait donc l'appel UNE fois, puis on va CHERCHER l'objet par son nom. Si on ne le trouve pas,
+    on s'arrête et on le dit — jamais de succès inventé.
+    """
+    noms = {"campagne": "campaigns", "ensemble": "adsets", "annonce": "ads"}
+    for tentative in (1, 2):
+        reponse = appel(chemin, parametres, reglages, "POST")
+        identifiant = reponse.get("id") if isinstance(reponse, dict) else None
+        if identifiant:
+            return identifiant
+        print(f"[publication] Meta a répondu sans créer {quoi} "
+              f"(réponse {json.dumps(reponse, ensure_ascii=False)[:80]}) — essai {tentative}/2",
+              flush=True)
+        if liste_de:
+            # On cherche l'objet par son nom : s'il existe, la création a marché malgré la réponse.
+            try:
+                liste = appel(f"{reglages['compte_publicitaire']}/{noms.get(quoi, 'campaigns')}",
+                              {"fields": "name,id", "limit": 25}, reglages).get("data", [])
+            except RuntimeError:
+                liste = []
+            nom_voulu = (parametres.get("name") or "").strip()
+            for objet in liste:
+                if (objet.get("name") or "").strip() == nom_voulu:
+                    print(f"[publication] {quoi} retrouvée malgré la réponse : {objet['id']}",
+                          flush=True)
+                    return objet["id"]
+        # ⚠️ PAUSE PLUS LONGUE ENTRE LES DEUX ESSAIS : Meta répond « success » sans rien créer quand
+        # les créations s'enchaînent trop vite (comportement observé le 10/10/2026 sur un compte en
+        # mode développement). Insister à la seconde près ne sert à rien ; laisser respirer, oui.
+        time.sleep(4)
+    raise RuntimeError(
+        f"Meta n'a pas créé {quoi} (elle a répondu « success » sans rien créer, deux fois de suite). "
+        "Rien n'a été lancé. Réessaie dans un moment : c'est un caprice de leur API, pas une faute "
+        "de ta publicité.")
+
+
 def mettre_en_ligne(publicite, reglages, en_ligne=True):
     """Crée la campagne, l'ensemble et l'annonce. Puis RELIT et compare — voir l'en-tête."""
     if publicite.get("bloquants"):
@@ -186,13 +236,20 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
     acces = verifier_acces(reglages)
     compte, page = acces["compte"], acces["page"]
     devise = compte.get("currency", "XOF")
-    # ⚠️ LE POINT QUI COÛTE CHER : Meta compte dans l'unité la plus PETITE de la devise. Pour l'euro
-    # et le dollar, c'est le centime (×100). Pour le franc CFA, il n'y a pas de centime (×1). On part
-    # de la devise DU COMPTE, jamais d'une supposition — et on relit après.
-    facteur = 1 if devise in ("XOF", "XAF", "JPY", "KRW", "CLP", "VND", "PYG", "RWF", "UGX", "DJF",
-                              "GNF", "KMF", "BIF", "ISK", "HUF", "TWD") else 100
-    budget_api = int(publicite["budget"]["journalier"]) * facteur
-    total_api = int(publicite["budget"]["total"]) * facteur
+    # ⚠️ LE POINT QUI COÛTE CHER, EN DEUX MORCEAUX :
+    # 1) le montant doit être CONVERTI dans la devise du compte — José pense en francs, son compte
+    #    « Merveilles » est en DOLLARS. Sans conversion, « 15 000 » partirait en 15 000 dollars ;
+    # 2) Meta compte dans l'unité la PLUS PETITE de la devise : centimes pour le dollar et l'euro
+    #    (×100), rien pour le franc CFA (×1). On part de la devise DU COMPTE, et on relit après.
+    facteur = 1 if devise in DEVISES_SANS_SOUS_UNITE else 100
+    journalier_compte, taux = pub.convertir(publicite["budget"]["journalier"], devise)
+    if journalier_compte is None:
+        raise RuntimeError("Je n'ai pas pu obtenir le taux de change franc CFA → "
+                           f"{devise} : je refuse d'envoyer un montant au hasard. Réessaie quand le "
+                           "réseau répond (rien n'a été créé).")
+    total_compte = publicite["budget"]["total"] * (taux or 1)
+    budget_api = int(round(journalier_compte * facteur))
+    total_api = int(round(total_compte * facteur))
 
     objectif, optimisation, facturation = construire_objectif(reglages, publicite)
     statut = "ACTIVE" if en_ligne else "PAUSED"
@@ -206,18 +263,24 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
         nom_image = televerser_image(publicite["visuel"]["chemin"], reglages)
         journal_des_etapes.append(f"visuel téléversé (empreinte {nom_image[:12]}…)")
 
-    campagne = appel(reglages["compte_publicitaire"], {
+    campagne_id = creer_et_verifier(reglages["compte_publicitaire"], {
         "name": f"{nom} — {time.strftime('%d/%m %H:%M')}",
         "objective": objectif,
         "status": statut,
         "special_ad_categories": "[]",
-        "buying_type": "AUCTION",
-    }, reglages, "POST")
-    journal_des_etapes.append(f"campagne créée : {campagne['id']}")
+        # ⛔⛔ NE JAMAIS ENVOYER « buying_type » AVEC LES OBJECTIFS « OUTCOME_* » (10/10/2026).
+        # Meta répond alors « {"success": true} » — un succès qui ne crée RIEN, sans le moindre
+        # message d'erreur. La campagne n'existe pas, et le code croit avoir réussi. C'est le pire
+        # genre de panne : silencieuse. La preuve se fait en RELISANT les campagnes du compte.
+        # ⚠️ ET « is_adset_budget_sharing_enabled » est EXIGÉ dès qu'on ne prend pas le budget au
+        # niveau de la campagne (code 100, sous-code 4834011) : false = chacun garde son budget.
+        "is_adset_budget_sharing_enabled": "false",
+    }, reglages, "campagne", liste_de=True)
+    journal_des_etapes.append(f"campagne créée : {campagne_id}")
 
     reglages_ensemble = {
         "name": f"Ensemble — {nom}",
-        "campaign_id": campagne["id"],
+        "campaign_id": campagne_id,
         "billing_event": facturation,
         "optimization_goal": optimisation,
         "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
@@ -228,8 +291,9 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
         "targeting": json.dumps(ciblage_meta(publicite, reglages), ensure_ascii=False),
         "status": statut,
     }
-    ensemble = appel(reglages["compte_publicitaire"], reglages_ensemble, reglages, "POST")
-    journal_des_etapes.append(f"ensemble créé : {ensemble['id']}")
+    ensemble_id = creer_et_verifier(reglages["compte_publicitaire"], reglages_ensemble, reglages,
+                                    "ensemble", liste_de=True)
+    journal_des_etapes.append(f"ensemble créé : {ensemble_id}")
 
     lien = publicite["destination"]
     if publicite["visuel"]["type"] == "image":
@@ -248,29 +312,30 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
             "video_id": reglages["video_id"], "message": publicite["textes"]["principal"],
             "title": publicite["textes"]["titre"], "image_url": publicite["textes"].get("miniature"),
             "call_to_action": {"type": "LEARN_MORE", "value": {"link": lien}}}}
-    creation = appel(reglages["compte_publicitaire"],
-                     {"name": f"Pub — {nom}", "object_story_spec": json.dumps(histoire, ensure_ascii=False)},
-                     reglages, "POST")
-    journal_des_etapes.append(f"annonce créée (creative) : {creation['id']}")
+    creation_id = creer_et_verifier(
+        reglages["compte_publicitaire"],
+        {"name": f"Pub — {nom}", "object_story_spec": json.dumps(histoire, ensure_ascii=False)},
+        reglages, "annonce")
+    journal_des_etapes.append(f"annonce créée (creative) : {creation_id}")
 
-    annonce = appel(reglages["compte_publicitaire"], {
-        "name": f"Annonce — {nom}", "adset_id": ensemble["id"],
-        "creative": json.dumps({"creative_id": creation["id"]}),
-        "status": statut}, reglages, "POST")
-    journal_des_etapes.append(f"annonce diffusée : {annonce['id']}")
+    annonce_id = creer_et_verifier(reglages["compte_publicitaire"], {
+        "name": f"Annonce — {nom}", "adset_id": ensemble_id,
+        "creative": json.dumps({"creative_id": creation_id}),
+        "status": statut}, reglages, "annonce", liste_de=True)
+    journal_des_etapes.append(f"annonce diffusée : {annonce_id}")
 
     # --------------------------------------------------------------------------------- RElecture
-    relu = appel(ensemble["id"], {"fields": "daily_budget,lifetime_budget,end_time,status"}, reglages)
+    relu = appel(ensemble_id, {"fields": "daily_budget,lifetime_budget,end_time,status"}, reglages)
     budget_relu = int(relu.get("daily_budget") or 0) / facteur
-    verdict = {"etapes": journal_des_etapes, "campagne": campagne["id"], "ensemble": ensemble["id"],
-               "annonce": annonce["id"], "creative": creation["id"], "devise": devise,
+    verdict = {"etapes": journal_des_etapes, "campagne": campagne_id, "ensemble": ensemble_id,
+               "annonce": annonce_id, "creative": creation_id, "devise": devise,
                "budget_envoye": budget_api, "budget_relu": budget_relu, "statut": relu.get("status"),
                "correspond": abs(budget_relu - publicite["budget"]["journalier"]) <= 1}
 
     if not verdict["correspond"]:
         # ⛔ LE GARDE-FOU QUI COMPTE : si le montant relu n'est pas celui voulu, on coupe TOUT, tout
         # de suite, plutôt que de laisser brûler un budget faux pendant qu'on réfléchit.
-        for identifiant in (annonce["id"], ensemble["id"], campagne["id"]):
+        for identifiant in (annonce_id, ensemble_id, campagne_id):
             try:
                 appel(identifiant, {"status": "PAUSED"}, reglages, "POST")
             except RuntimeError:
@@ -279,8 +344,8 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
         consigner(f"STOP : budget relu {budget_relu} {devise} au lieu de "
                   f"{publicite['budget']['journalier']} {devise}. Tout a été mis en pause.")
     else:
-        consigner(f"Pub diffusée : campagne {campagne['id']} · ensemble {ensemble['id']} · "
-                  f"annonce {annonce['id']} · {budget_relu} {devise}/jour pendant "
+        consigner(f"Pub diffusée : campagne {campagne_id} · ensemble {ensemble_id} · "
+                  f"annonce {annonce_id} · {budget_relu} {devise}/jour pendant "
                   f"{publicite['duree']['jours']} jours")
     return verdict
 
@@ -288,14 +353,21 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
 def apercu_a_blanc(publicite, reglages):
     """Montre exactement ce qui serait envoyé, sans rien créer."""
     devise = reglages.get("devise", "XOF")
-    facteur = 1 if devise in ("XOF", "XAF", "JPY", "KRW") else 100
+    facteur = 1 if devise in DEVISES_SANS_SOUS_UNITE else 100
     objectif, optimisation, facturation = construire_objectif(reglages, publicite)
+    journalier_compte, taux = pub.convertir(publicite["budget"]["journalier"], devise)
+    total_compte = publicite["budget"]["total"] * (taux or 1) if taux else None
     return {
         "compte": reglages.get("compte_publicitaire", "(à renseigner)"),
         "page": reglages.get("page_id", "(à renseigner)"),
         "objectif": objectif, "optimisation": optimisation, "facturation": facturation,
-        "budget_journalier_envoye": publicite["budget"]["journalier"] * facteur,
-        "budget_total_envoye": publicite["budget"]["total"] * facteur,
+        "budget_journalier_en_francs": publicite["budget"]["journalier"],
+        "budget_journalier_dans_la_devise": round(journalier_compte, 2) if journalier_compte else None,
+        "budget_total_dans_la_devise": round(total_compte, 2) if total_compte else None,
+        "taux_du_jour_1_franc": taux,
+        "budget_journalier_envoye": (int(round(journalier_compte * facteur))
+                                     if journalier_compte else None),
+        "budget_total_envoye": (int(round(total_compte * facteur)) if total_compte else None),
         "devise_du_compte": devise,
         "duree_jours": publicite["duree"]["jours"],
         "ciblage": ciblage_sans_reseau(publicite["cible"]),
@@ -319,6 +391,8 @@ def main():
     analyseur.add_argument("fichier", help="le JSON rendu par pub.py --json")
     analyseur.add_argument("--a-blanc", action="store_true", help="montrer sans rien créer")
     analyseur.add_argument("--en-ligne", action="store_true", help="créer et activer")
+    analyseur.add_argument("--essai", action="store_true",
+                           help="créer TOUT, mais en pause : la chaîne est prouvée, rien n'est dépensé")
     options = analyseur.parse_args()
 
     with open(options.fichier, encoding="utf-8") as f:
@@ -336,11 +410,11 @@ def main():
     if options.a_blanc:
         print(json.dumps(apercu_a_blanc(publicite, reglages), ensure_ascii=False, indent=2))
         return 0
-    if not options.en_ligne:
-        print("Ajoute --a-blanc (montrer) ou --en-ligne (créer pour de vrai).")
+    if not (options.en_ligne or options.essai):
+        print("Ajoute --a-blanc (montrer), --essai (créer en pause) ou --en-ligne (créer et activer).")
         return 1
     try:
-        verdict = mettre_en_ligne(publicite, reglages, en_ligne=True)
+        verdict = mettre_en_ligne(publicite, reglages, en_ligne=options.en_ligne)
     except RuntimeError as erreur:
         print("⛔", erreur)
         return 2
@@ -349,6 +423,11 @@ def main():
         print("\n⛔ Le budget relu ne correspond pas : j'ai tout mis EN PAUSE. "
               "Va voir dans le gestionnaire de pubs avant de relancer.")
         return 3
+    if options.essai:
+        print(f"\n✅ ESSAI : tout est créé et VÉRIFIÉ, mais en PAUSE — rien ne se dépense. "
+              f"{verdict['budget_relu']:.0f} {verdict['devise']} par jour pendant "
+              f"{publicite['duree']['jours']} jours. Dis-moi quand tu veux l'activer.")
+        return 0
     print(f"\n✅ En ligne. {verdict['budget_relu']:.0f} {verdict['devise']} par jour pendant "
           f"{publicite['duree']['jours']} jours.")
     return 0

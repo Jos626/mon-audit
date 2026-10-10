@@ -1,0 +1,40 @@
+{
+  "des nappes et du linge de table importés": {
+    "iterations": [
+      {
+        "version_redigee": {
+          "accroche": "Vous cherchez quelle couleur pour votre table ?",
+          "principal": "Imagine une table qui impressionne tes invités. Nos nappes et linges de table importés apportent élégance et douceur à chaque repas. Tu profites d’un entretien facile et d’un style qui dure.",
+          "titre": "Nappes & linges de table chic",
+          "description": "Qualité importée, couleurs tendance, entretien simple.",
+          "appel": "Acheter"
+        },
+        "budget_fcfa": 15000,
+        "duree_jours": 10,
+        "cible": {
+          "pays": [
+            "CI"
+          ],
+          "villes": [
+            "Abidjan"
+          ],
+          "age_min": 25,
+          "age_max": 45,
+          "sexe": "femmes",
+          "langues": [
+            "fr"
+          ],
+          "interets": [],
+          "texte_original": "femmes 25-45 ans Abidjan",
+          "non_compris": []
+        },
+        "lecon": "« Publication : « Vous recherchez quelle couleu » obtient ses résultats à 0.25 $ pièce (46 conversations), contre 9.97 $ pour « Publication : « ⌚✨ LES PETITS AUSSI ONT LEUR  ». La médiane du compte es",
+        "geste": "Copier la structure et le texte de « Publication : « Vous recherchez quelle c » ; c'est le modèle à imiter.",
+        "depense_du_compte": 47.38,
+        "resultats_du_compte": 87,
+        "quand": "10/10/2026 12:29",
+        "numero": 1
+      }
+    ]
+  }
+}

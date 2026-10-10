@@ -1,0 +1,22 @@
+🧑‍🤝‍🧑 LE PORTRAIT CLIENT — TROIS SOURCES, DES CHIFFRES, AUCUNE INVENTION
+   ✅ les trois sources sont lues (commentaires, messenger, whatsapp)
+   ✅ l'export WhatsApp donne bien des messages (36)
+   ✅ un fichier de commentaires en .txt n'est PAS pris pour du WhatsApp (5 lus)
+   ✅ les lignes système de WhatsApp ne sont pas comptées comme des paroles
+   ✅ …y compris les ajouts de contact
+   ✅ un message écrit sur trois lignes reste UN SEUL message, entier
+   ✅ sans que le commerçant le dise, le vendeur n'est PAS deviné quand le doute existe
+   ✅ …et le comptage des clients ignorés est alors ANNONCÉ comme non établi, pas inventé
+   ✅ un client qui écrit plusieurs fois n'est compté qu'UNE fois ignoré (1 sur 46)
+   ✅ « je cherche un cadeau » n'est pas compté comme une demande de remise
+   ✅ le portrait ne décrit pas « ans » (0 occurrence(s) hors avertissement) — ça ne se lit pas dans un fil de discussion
+   ✅ le portrait ne décrit pas « âge » (0 occurrence(s) hors avertissement) — ça ne se lit pas dans un fil de discussion
+   ✅ le portrait ne décrit pas « revenu » (0 occurrence(s) hors avertissement) — ça ne se lit pas dans un fil de discussion
+   ✅ le portrait ne décrit pas « salaire » (0 occurrence(s) hors avertissement) — ça ne se lit pas dans un fil de discussion
+   ✅ le portrait ne décrit pas « célibataire » (0 occurrence(s) hors avertissement) — ça ne se lit pas dans un fil de discussion
+   ✅ …et l'avertissement qui dit ce qu'il REFUSE d'inventer est bien écrit au client
+   ✅ sous 30 messages de clients, l'outil dit « trop peu pour un portrait sérieux »
+   ✅ les demandes de prix et de livraison arrivent en tête (['la livraison', 'le prix'])
+   ✅ les villes citées par les clients sont relevées
+
+✅ 19 contrôles verts — trois sources lues, des chiffres, et rien d'inventé.

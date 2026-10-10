@@ -1,0 +1,24 @@
+📲 LA PIÈCE WHATSAPP — TESTÉE SUR LES CHARGES RÉELLES DE META
+   ✅ un message reçu est lu (1)
+   ✅ son texte est exact : « Does it come in another color? »
+   ✅ son auteur vient du profil WhatsApp (Sheena Nelson)
+   ✅ son horodatage (envoyé en secondes par Meta) est converti : 08/06/2025 20:59
+   ✅ son identifiant `wamid.…` est conservé (anti-doublon)
+   ✅ le numéro professionnel de la notification est relevé
+   ✅ un accusé de réception (« remis ») n'est PAS compté comme un message de client
+   ✅ …il est rangé à part, avec son statut et son caractère payant
+   ✅ Meta est accepté et reçoit SON challenge tel quel (sinon le webhook n'est jamais validé)
+   ✅ un jeton de vérification faux est refusé (403)
+   ✅ une rediffusion de Meta ne range pas deux fois le même message (1 puis 0)
+   ✅ 2 h après le message du client, la fenêtre est ouverte (22 h)
+   ✅ 25 h après : la fenêtre est FERMÉE — relancer librement est interdit par Meta, et le module le sait avant d'essayer
+   ✅ la légende d'une photo est gardée : c'est souvent là qu'est la question
+   ✅ un message vocal n'est PAS inventé : il est signalé ([message vocal — à écouter])
+   ✅ les 3 messages reçus se retrouvent dans la mémoire (3)
+   ✅ LE PORTRAIT LIT LE DIRECT SANS RIEN CHANGER : thèmes trouvés ['le prix', 'la livraison']
+   ✅ …et la source est bien identifiée comme l'API
+
+   (essai réseau réel : envoi vers un numéro professionnel inexistant)
+   ✅ Meta a répondu à notre requête d'envoi — donc sa forme est la bonne : « Authentication Error »
+
+✅ 19 contrôles verts — la pièce WhatsApp reçoit, vérifie, range, et nourrit le portrait.

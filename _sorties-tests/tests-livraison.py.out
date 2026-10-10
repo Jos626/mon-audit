@@ -1,0 +1,16 @@
+📨 GARDE-FOU DE LA LIVRAISON DU RAPPORT DANS LA PAGE
+   ✅ la page d'analyse s'affiche
+   ✅ elle porte le jeton de l'analyse
+   ✅ aucun jeton de gabarit resté en clair
+   ✅ elle se met à jour toute seule (le script de suivi est là)
+   ✅ l'état de l'analyse est un JSON lisible
+   ✅ le rapport s'affiche dans la page
+   ✅ le gras est mis en forme
+   ✅ le contenu du rapport ne peut pas exécuter de code (<script> échappé)
+   ✅ on peut l'enregistrer en PDF
+   ✅ aucun jeton de gabarit resté en clair
+   ✅ un lien expiré est annoncé comme tel
+   ✅ un audit encore en cours invite à le suivre
+   ✅ une analyse expirée est annoncée clairement
+
+✅ 13 contrôles verts, 0 échec(s)

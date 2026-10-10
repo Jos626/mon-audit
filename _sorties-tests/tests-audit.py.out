@@ -1,0 +1,44 @@
+🔍 LE MOTEUR D'AUDIT — IL ACCUSE JUSTE, OU IL SE TAIT
+
+1) Un compte qui marche : l'audit doit se taire
+   ✅ aucune alerte importante sur un compte sain (0 trouvée(s))
+   ✅ …et l'audit le dit explicitement
+
+2) Le compte à problèmes : les bonnes alertes, et pas d'autres
+   ✅ « rien ne mesure tes ventes » est signalé — le contrôle qui passe avant tous les autres
+   ✅ le budget qui ne vise pas la vente est signalé
+   ✅ la fréquence de 4,2 est signalée (la même personne, 4 fois)
+   ✅ l'annonce à 3 600 F le résultat est signalée
+   ✅ …et les annonces qui marchent sont nommées, pour ne pas y toucher
+
+3) Le tri : par argent d'abord
+   ✅ les constats sont triés par montant décroissant ([87600, 87600, 54600]…)
+   ✅ le premier constat porte un montant : on commence par son argent, pas par la théorie
+   ✅ le total en jeu est calculé (247 800 F)
+
+4) Peu de résultats : personne n'est déclaré gagnant
+   ✅ le manque de volume est annoncé comme tel
+   ✅ …et aucune annonce n'est déclarée « gagnante » sur 7 résultats (c'est du hasard)
+
+5) Aucun chiffre inventé
+   ✅ « Rien ne mesure tes ventes » : montant positif ou absent, jamais négatif ni fabriqué
+   ✅ « 100 % de ton budget ne vise pas la ven » : montant positif ou absent, jamais négatif ni fabriqué
+   ✅ « 54 600 F CFA tournent sur une audience » : montant positif ou absent, jamais négatif ni fabriqué
+   ✅ « Tes gagnantes portent 62 % de ton budg » : montant positif ou absent, jamais négatif ni fabriqué
+   ✅ « 18 000 F CFA partent sur des annonces  » : montant positif ou absent, jamais négatif ni fabriqué
+   ✅ « 1 annonces sur 4 sont sous 1 % de clic » : montant positif ou absent, jamais négatif ni fabriqué
+   ✅ sans la marge du client, l'outil NE déclare PAS « tu perds de l'argent » (il ne peut pas le savoir)
+   ✅ avec la marge donnée et de vraies commandes  il le déclare (20 000 F perdus)
+   ✅ …et le constat porte le calcul qui le fonde (coût par commande face à la marge)
+
+6) Les formats d'écriture
+   ✅ aucun montant à l'anglaise (virgule de milliers) dans le rapport — trouvés : []
+   ✅ les milliers sont écrits à la française (16 montants, ex. « 7 600 »)
+   ✅ les décimales aussi (2,5 et 4,2, pas 2.5 et 4.2)
+   ✅ la monnaie est nommée
+
+7) Le piège des nombres d'Ads Manager (espaces insécables)
+   ✅ « 12 500 » avec espace insécable est lu 12500, pas 12 ni 0 (total : 20000)
+   ✅ et les résultats totalisent 40 (40)
+
+✅ 27 contrôles verts — il accuse juste, il se tait quand il faut, et il ne fabrique rien.

@@ -1,0 +1,27 @@
+📱 GARDE-FOU DE L'APPLICATION INSTALLABLE
+   ✅ le manifeste répond 200
+   ✅ le manifeste est un JSON valide
+   ✅ il porte le nom de l'application
+   ✅ il demande l'affichage en plein écran
+   ✅ il commence à la racine
+   ✅ il propose une icône 192 et une 512
+   ✅ il propose une icône « masquable » (Android la redécoupe)
+   ✅ icone-192.png existe et fait bien un PNG
+   ✅ icone-512.png existe et fait bien un PNG
+   ✅ icone-masquable-512.png existe et fait bien un PNG
+   ✅ icone-apple-180.png existe et fait bien un PNG
+   ✅ le service worker est servi (Chrome l'exige pour installer)
+   ✅ la page déclare le manifeste
+   ✅ aucun jeton de remplacement ne reste en clair (__LIEN__)
+   ✅ aucune accolade de gabarit cassée ({{ )
+   ✅ le bouton « Continuer avec Facebook » porte un vrai lien
+   ✅ …et il demande les bonnes permissions, sans la fautive
+   ✅ la page a une icône pour iPhone
+   ✅ la page dit au client comment l'installer
+   ✅ l'application est signée José Ledanite
+   ✅ le bloc des trois points reste supprimé
+   ✅ la phrase sur le mot de passe est bien là, seule
+   ✅ la page de confidentialité est signée aussi
+   ✅ le manifeste porte la signature
+
+✅ 24 contrôles verts, 0 échec(s)

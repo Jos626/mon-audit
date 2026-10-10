@@ -1,0 +1,28 @@
+🔐 LA CONNEXION AU COMPTE DU CLIENT — ET LA PORTE QUI RESTE FERMÉE
+
+1) La traduction des chiffres de Meta
+   ✅ une campagne d'achat : 30 achats reconnus, type « achat »
+   ✅ le coût par résultat est calculé (1400 F pour 42 000 F / 30)
+   ✅ une campagne de messages est comptée comme des messages, pas comme des ventes
+   ✅ …et ses achats restent à ZÉRO : c'est ce zéro qui déclenchera « rien ne mesure tes ventes »
+   ✅ une campagne de trafic est étiquetée « clic » — jamais présentée comme des clients
+
+2) La porte qui ne s'ouvre pas : jamais un mot de passe
+   ✅ aucun fichier ne collecte d'identifiants (19 fichiers examinés, code exécutable seulement)
+   ✅ l'authentification passe par un JETON révocable, jamais par un identifiant
+   ✅ le module ne range JAMAIS le jeton du client sur le disque
+
+3) Le jeton est décrit AVANT de lire quoi que ce soit
+   ✅ les droits demandés sont listés avec leur usage (5 droits)
+   ✅ l'audience de la page (âge, sexe, villes) passe par le droit dédié — pas par une devinette
+   ✅ un jeton sans `ads_read` ARRÊTE l'audit au lieu de rendre un rapport vide (un rapport vide se lirait « tout va bien »)
+
+4) Quand Meta refuse, on rend SON message (essai réseau réel)
+   ✅ Meta a répondu, et son message est remonté tel quel : « Invalid OAuth access token - Cannot parse access token »
+
+✅ 12 contrôles verts — aucune demande de mot de passe, et un jeton décrit avant usage.
+
+⛔ GARDE-FOU : une section FACULTATIVE ne doit jamais emporter le rapport
+[audit] section facultative « l'audience de la page » indisponible — ErreurMeta: Invalid Scopes: read_insights
+   ✅ l'audience en panne ne fait pas tomber l'audit → résultat : {}
+   ✅ ...et le problème est annoncé : ["l'audience de la page : indisponible"]

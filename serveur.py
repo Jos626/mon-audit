@@ -829,11 +829,15 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                 envoye = envoyer_telegram(jeton_bot, fiche["chat"], message)
                 REGLAGES_A_RECUPERER["en_attente"] = reglages
                 del PUBLICATIONS[parametres.get("id", "")]
-                suite = ("Tes réglages sont enregistrés : tu peux créer une publicité tout de suite."
-                         if envoye else
-                         "L'autorisation est bonne, mais je n'ai pas pu prévenir ton téléphone "
-                         "par Telegram. Ouvre la conversation avec ton bot et appuie sur DÉMARRER, "
-                         "puis recommence — ça prend dix secondes.")
+                # ⚠️ L'INSTALLATION NE DÉPEND PAS DE TELEGRAM : le téléphone vient chercher les
+                # réglages tout seul. Le message n'est qu'un confort — ne pas le présenter comme la
+                # condition de la réussite, sinon on annonce un échec là où tout a marché.
+                suite = ("C'est enregistré. Ton téléphone installe les réglages tout seul dans les "
+                         "dix minutes — tu n'as rien à faire.")
+                if not envoye:
+                    suite += (" (Je n'ai pas pu te prévenir par Telegram : ouvre ta conversation "
+                              "avec le bot et appuie sur DÉMARRER si tu veux être prévenu la "
+                              "prochaine fois.)")
                 self._envoyer_html(PAGE_PUB_FIN.replace("__MESSAGE__", suite))
                 return
 

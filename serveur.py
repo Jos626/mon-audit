@@ -76,16 +76,25 @@ def _secret(nom, obligatoire=True):
     return valeur
 
 
-def url_de_connexion(app_id, adresse_publique, etat):
+DROITS_AUDIT = ("ads_read", "business_management", "pages_show_list", "pages_read_engagement")
+# ⛔⛔ POUR CREER ET DIFFUSER DES PUBLICITES, IL FAUT LE DROIT DE *GERER*, PAS SEULEMENT DE LIRE.
+# José, le 10/10/2026 : « Crée un bouton qui génère des jetons. Aucun débutant n'ira chercher lui-même
+# le jeton. » Ce parcours remplace l'explorateur de Meta par UN appui.
+# ⚠️ « pages_manage_ads » est exigé par Meta pour publier au nom d'une page : sans lui, le dialogue
+# s'ouvre mais la création de l'annonce est refusée.
+DROITS_PUBLICATION = ("ads_management", "business_management", "pages_show_list", "pages_manage_ads")
+
+
+def url_de_connexion(app_id, adresse_publique, etat, droits=DROITS_AUDIT, page_de_retour="/callback"):
     """L'adresse du dialogue Facebook. C'est LE bouton que le commerçant appuie.
 
-    Les permissions demandées sont exactement celles dont l'audit a besoin, et Meta les présente au
+    Les permissions demandées sont exactement celles dont le travail a besoin, et Meta les présente au
     client sur SES pages — il voit ce qu'il accorde, et il peut refuser.
     """
     return ("https://www.facebook.com/" + VERSION_API + "/dialog/oauth?" +
             urllib.parse.urlencode({
                 "client_id": app_id,
-                "redirect_uri": adresse_publique.rstrip("/") + "/callback",
+                "redirect_uri": adresse_publique.rstrip("/") + page_de_retour,
                 "state": etat,
                 # ⛔ « read_insights » A ÉTÉ RETIRÉE LE 10/10/2026 — ELLE BLOQUAIT TOUT LE DIALOGUE.
                 # Facebook répondait « Invalid Scopes: read_insights » et refusait d'afficher la page
@@ -96,19 +105,18 @@ def url_de_connexion(app_id, adresse_publique, etat):
                 # voie). Les statistiques publicitaires, elles, viennent bien de « ads_read ».
                 # LEÇON : une seule permission invalide fait échouer TOUTE la demande. Avant de
                 # toucher à cette liste, tester le dialogue (voir tests-permissions-meta.py).
-                "scope": ",".join(("ads_read", "business_management", "pages_show_list",
-                                   "pages_read_engagement")),
+                "scope": ",".join(droits),
                 "response_type": "code"}))
 
 
-def echanger_le_code(code, app_id, app_secret, adresse_publique):
+def echanger_le_code(code, app_id, app_secret, adresse_publique, page_de_retour="/callback"):
     """Le code devient un jeton — d'abord court, puis LONG (≈ 60 jours)."""
     if not app_secret:
         raise ErreurGraph("La clé secrète de l'application n'est pas encore installée sur le "
                           "serveur : Meta ne peut pas échanger ce code contre un jeton.")
     court = _graph_get("oauth/access_token", {
         "client_id": app_id, "client_secret": app_secret, "code": code,
-        "redirect_uri": adresse_publique.rstrip("/") + "/callback"})
+        "redirect_uri": adresse_publique.rstrip("/") + page_de_retour})
     try:
         long_ = _graph_get("oauth/access_token", {
             "grant_type": "fb_exchange_token", "client_id": app_id, "client_secret": app_secret,
@@ -141,19 +149,36 @@ def _graph_get(chemin, parametres, timeout=40):
 
 
 # ─────────────────────────────────────────────────────────── la signature du lien
-def signer(chat_id, secret):
-    """Le lien porte l'identifiant Telegram du client, SIGNÉ. Un lien forgé est refusé."""
-    brut = f"{chat_id}.{int(time.time())}"
+def signer(chat_id, secret, mode="audit"):
+    """Le lien porte le mode ET l'identifiant Telegram du client, SIGNÉS. Un lien forgé est refusé.
+
+    ⚠️ POURQUOI LE MODE VOYAGE DANS LE LIEN SIGNÉ : Meta renvoie EXACTEMENT l'adresse de retour
+    déclarée dans son tableau de bord. Ajouter un paramètre fixe (« ?pub=1 ») obligerait à déclarer
+    une deuxième adresse — une manipulation de plus, et un dialogue qui échoue en silence si on
+    l'oublie. Le mode passe donc par le `state`, qui revient intact.
+    """
+    brut = f"{mode}|{chat_id}|{int(time.time())}"
     signature = hmac.new(secret.encode(), brut.encode(), hashlib.sha256).hexdigest()[:32]
-    return f"{brut}.{signature}"
+    return f"{brut}|{signature}"
+
+
+def mode_du_lien(etat):
+    """Rend le mode porté par un lien signé (audit ou pub), ou None si le format est ancien."""
+    morceaux = (etat or "").split("|")
+    return morceaux[0] if len(morceaux) == 4 else None
 
 
 def verifier_etat(etat, secret, validite=3600):
     """Rend l'identifiant Telegram, ou None si le lien est forgé ou trop vieux."""
     try:
-        chat_id, quand, signature = etat.rsplit(".", 2)
-        attendu = hmac.new(secret.encode(), f"{chat_id}.{quand}".encode(),
-                           hashlib.sha256).hexdigest()[:32]
+        morceaux = (etat or "").split("|")
+        if len(morceaux) == 4:                       # nouveau format : mode|chat|quand|signature
+            mode, chat_id, quand, signature = morceaux
+            brut = f"{mode}|{chat_id}|{quand}"
+        else:                                        # ancien format : chat.quand.signature
+            chat_id, quand, signature = (etat or "").rsplit(".", 2)
+            brut = f"{chat_id}.{quand}"
+        attendu = hmac.new(secret.encode(), brut.encode(), hashlib.sha256).hexdigest()[:32]
         if not hmac.compare_digest(signature, attendu):
             return None
         if time.time() - int(quand) > validite:
@@ -166,7 +191,7 @@ def verifier_etat(etat, secret, validite=3600):
 # ─────────────────────────────────────────────────────────── les pages
 PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mon Audit — pourquoi ta pub ne vend pas</title>
+<title>Pubmeta — pourquoi ta pub ne vend pas</title>
 <link rel="manifest" href="/manifeste.json">
 <meta name="theme-color" content="#f4f6fb">
 <meta name="mobile-web-app-capable" content="yes">
@@ -206,6 +231,7 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  /* la phrase de réassurance, seule et sobre : ni liste, ni coche, ni encadré */
  .serment{color:#8896a8;font-size:13.5px;margin:14px 0 0;text-align:center;letter-spacing:.1px}
  .fb svg{width:22px;height:22px;fill:#fff;flex:none}
+ .fb.pub{background:#16a34a;margin-top:12px;box-shadow:0 10px 22px -10px rgba(22,163,74,.9)}
  .trait{height:1px;background:#eef2f7;margin:24px 0 16px}
  .petit{color:#8896a8;font-size:12.5px;line-height:1.6;margin:0 0 10px}
  .pied{color:#a3aebd;font-size:12px;margin:14px 0 0}
@@ -213,7 +239,7 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .signature{color:#94a3b8;font-size:12.5px;margin:14px 0 0;letter-spacing:.2px}
  .signature b{color:#64748b;font-weight:600}
 </style></head><body><div class="carte">
-<img class="logo" src="/icone-512.png" alt="Mon Audit" width="132" height="132">
+<img class="logo" src="/icone-512.png" alt="Pubmeta" width="132" height="132">
 <span class="etiquette">100 % gratuit</span>
 <h1>Pourquoi ta pub ne vend pas</h1>
 <p class="accroche">Je lis ton <b>compte publicitaire</b> et les <b>paroles de tes clients</b>.
@@ -228,16 +254,24 @@ Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.<
  la phrase qui rassure au moment précis où un client hésite à cliquer. Une phrase, pas une liste, pas
  de coches. -->
 <p class="serment">🔒 Ton mot de passe Facebook ne passe jamais par ici.</p>
+<!-- LE SECOND BOUTON : la création de publicités (mission ajoutée le 10/10/2026). Il mène au parcours
+     qui demande les droits de GÉRER les annonces — un seul appui, puis deux listes à choisir. -->
+<a class="fb pub" href="__LIEN_PUB__">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5zm0 7.2L4.6 5.9 12 2.2l7.4 3.7L12 9.2zM2 12l10 5 10-5-0.9-.5L12 15.6 2.9 11.5 2 12zm0 5 10 5 10-5-.9-.5L12 20.6 2.9 16.5 2 17z"/></svg>
+  Créer mes publicités
+</a>
+<p class="petit" style="margin-top:10px">Nouveau : je fabrique la publicité et je la mets en ligne
+— ton image, ton idée, ton budget, ta durée, ta cible.</p>
 <!-- ⛔ LE BLOC DES TROIS POINTS A ÉTÉ RETIRÉ LE 10/10/2026, SUR DEMANDE DE JOSÉ
  (capture annotée : « Supprime cette partie »). On ne le réintroduit pas sans son accord. -->
 <p class="petit">📱 Pour la garder sous la main : menu ⋮ de ton navigateur →
 « Ajouter à l'écran d'accueil ». Elle s'ouvrira comme une application.</p>
 <p class="pied">Tes données restent les tiennes — <a href="/confidentialite">confidentialité</a></p>
-<p class="signature">Mon Audit — par <b>José Ledanite</b></p>
+<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 PAGE_CONFIDENTIALITE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Confidentialité — Mon Audit</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Confidentialité — Pubmeta</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -250,7 +284,7 @@ PAGE_CONFIDENTIALITE = """<!doctype html><html lang="fr"><head><meta charset="ut
  .date{color:#94a3b8;font-size:13px;margin:0 0 18px}
 </style></head><body><div class="carte">
 <h1>Confidentialité</h1>
-<p class="date">Mon Audit — dernière mise à jour : 10 octobre 2026</p>
+<p class="date">Pubmeta — dernière mise à jour : 10 octobre 2026</p>
 <h2>Ce que nous lisons</h2>
 <p>Uniquement ce que le client autorise lui-même en se connectant avec Facebook : ses statistiques
 publicitaires, la liste de ses pages et les commentaires de ses publications. Rien d'autre.</p>
@@ -269,11 +303,11 @@ aucune donnée personnelle à effacer : il n'en détient pas. Si tu veux arrête
 l'accès dans tes réglages Facebook — et tout s'arrête là.</p>
 <h2>Nous joindre</h2>
 <p>Pour toute question sur ces points, écris à l'éditeur du service, José Ledanite.</p>
-<p class="date" style="margin-top:22px">Mon Audit — par <b>José Ledanite</b></p>
+<p class="date" style="margin-top:22px">Pubmeta — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 PAGE_RESULTAT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Mon Audit</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Pubmeta</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -289,6 +323,180 @@ PAGE_RESULTAT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 </style></head><body><div class="carte"><h1>Ton audit est prêt</h1>
 <div class="ok">Je te l'ai envoyé dans <b>Telegram</b>. Tu peux fermer cette page.</div>
 <pre>__APERCU__</pre></div></body></html>"""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# LE BOUTON QUI GÉNÈRE LE JETON — la demande de José, le 10/10/2026 :
+#   « Crée un bouton qui génère des jetons. Aucun débutant n'ira chercher lui-même le jeton. »
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# TROIS PAGES, UN SEUL GESTE POUR L'UTILISATEUR : un bouton, il autorise, il choisit son compte et sa
+# page dans une liste. Il ne voit JAMAIS un jeton, ne copie rien, ne cherche aucun identifiant.
+#
+# Le jeton est destiné à la machine qui publiera les publicités. C'est pourquoi le serveur l'envoie
+# par TELEGRAM (au propriétaire de l'outil) : c'est un canal privé déjà en place, et ça évite le
+# copier-coller qui fait renoncer un débutant.
+
+PAGE_PUB_BOUTON = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Créer mes publicités — Pubmeta</title>
+<meta name="theme-color" content="#f4f6fb">
+<link rel="apple-touch-icon" href="/icone-apple-180.png">
+<link rel="icon" type="image/png" href="/icone-192.png">
+<style>
+ :root{color-scheme:light}
+ *{box-sizing:border-box}
+ body{margin:0;background:
+      radial-gradient(900px 420px at 50% -8%,#e5f6ec 0%,rgba(229,246,236,0) 62%),
+      linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;min-height:100vh;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+      display:flex;align-items:center;justify-content:center;padding:26px 18px}
+ .carte{width:100%;max-width:440px;background:#fff;border:1px solid #e8edf4;border-radius:22px;
+        padding:34px 26px 26px;text-align:center;
+        box-shadow:0 1px 2px rgba(15,23,42,.04),0 18px 44px -18px rgba(15,23,42,.18)}
+ .logo{width:132px;height:132px;border-radius:34px;display:block;margin:6px auto 20px;
+       box-shadow:0 18px 38px -16px rgba(15,23,42,.5)}
+ .etiquette{display:inline-block;background:#e8f8ee;color:#15803d;font-size:12.5px;font-weight:700;
+            padding:5px 12px;border-radius:999px;margin:0 0 14px;letter-spacing:.2px}
+ h1{font-size:29px;line-height:1.18;margin:0 0 12px;letter-spacing:-.6px}
+ .accroche{color:#475569;font-size:16.5px;line-height:1.62;margin:0 0 28px}
+ .accroche b{color:#0f172a}
+ .fb{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;
+     background:#1877f2;color:#fff;text-decoration:none;font-weight:700;font-size:17px;
+     padding:17px 20px;border-radius:14px;box-shadow:0 10px 22px -10px rgba(24,119,242,.9)}
+ .fb svg{width:22px;height:22px;fill:#fff;flex:none}
+ .serment{color:#8896a8;font-size:13.5px;margin:14px 0 0}
+ .trait{height:1px;background:#eef2f7;margin:24px 0 16px}
+ .petit{color:#8896a8;font-size:12.5px;line-height:1.6;margin:0 0 10px}
+ .signature{color:#94a3b8;font-size:12.5px;margin:14px 0 0}
+ .signature b{color:#64748b;font-weight:600}
+</style></head><body><div class="carte">
+<img class="logo" src="/icone-512.png" alt="Pubmeta" width="132" height="132">
+<span class="etiquette">Publication automatique</span>
+<h1>Créer mes publicités</h1>
+<p class="accroche">Tu donnes <b>ton image</b>, <b>ton idée</b>, ton budget, ta durée et ta cible.
+Je fabrique la publicité et je la mets en ligne — <b>sans que tu touches au gestionnaire de pubs</b>.</p>
+<a class="fb" href="__LIEN__">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9
+  3.7-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>
+  Autoriser la création de mes publicités
+</a>
+<p class="serment">🔒 Ton mot de passe Facebook ne passe jamais par ici. Tu peux retirer cet accès
+quand tu veux, dans tes réglages Facebook.</p>
+<div class="trait"></div>
+<p class="petit">Ce que tu autorises : gérer tes annonces, voir tes pages, publier au nom de ta page.
+Ce que tu vois ensuite : tes comptes publicitaires et tes pages, en liste — tu choisis, c'est tout.</p>
+<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+</div></body></html>"""
+
+PAGE_PUB_FIN = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>C'est prêt — Pubmeta</title>
+<link rel="icon" type="image/png" href="/icone-192.png">
+<style>
+ :root{color-scheme:light}
+ body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:26px 18px;line-height:1.65}
+ .carte{max-width:560px;margin:0 auto;background:#fff;border:1px solid #e8edf4;border-radius:20px;
+        padding:30px 26px;box-shadow:0 18px 44px -22px rgba(15,23,42,.18)}
+ h1{font-size:23px;margin:0 0 12px}
+ .ok{background:#e8f8ee;border-left:4px solid #22c55e;padding:14px 16px;border-radius:10px;color:#166534}
+ p,li{color:#475569;font-size:15px}
+ .signature{color:#94a3b8;font-size:12.5px;margin-top:22px}
+ .signature b{color:#64748b;font-weight:600}
+</style></head><body><div class="carte">
+<h1>C'est réglé ✅</h1>
+<div class="ok">__MESSAGE__</div>
+<p>Tu peux fermer cette page. La suite se passe dans <b>Telegram</b> : tu envoies ta photo, ton idée,
+ton budget, ta durée et ta cible — et la publicité part.</p>
+<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+</div></body></html>"""
+
+
+class ErreurPublication(Exception):
+    pass
+
+
+def lire_comptes_et_pages(jeton):
+    """Ce que l'utilisateur a le droit de piloter : ses comptes publicitaires et ses pages.
+
+    On ne lui fait pas chercher un « act_123… » : on lui montre une liste et il choisit.
+    """
+    comptes = _graph_get("me/adaccounts", {
+        "access_token": jeton, "limit": 50,
+        "fields": "name,account_id,currency,account_status"}).get("data", [])
+    pages = _graph_get("me/accounts", {
+        "access_token": jeton, "limit": 50, "fields": "name,id"}).get("data", [])
+    return comptes, pages
+
+
+def page_de_choix(identifiant, comptes, pages):
+    """La page où l'utilisateur choisit son compte et sa page. Deux listes, deux réponses."""
+    def options(entrees, valeur, libelle):
+        morceaux = []
+        for i, entree in enumerate(entrees, 1):
+            morceaux.append(f'<option value="{i}">{i}. {libelle(entree)}</option>')
+        return "\n".join(morceaux) or '<option value="">— aucun —</option>'
+
+    etat_compte = {1: "actif", 2: "désactivé", 3: "non réglé", 7: "en revue",
+                   9: "en grâce", 101: "fermé"}
+    choix_comptes = options(comptes, "account_id",
+                            lambda c: f"{c.get('name') or 'compte sans nom'} · "
+                                      f"{c.get('currency')} · "
+                                      f"{etat_compte.get(c.get('account_status'), '?')}")
+    choix_pages = options(pages, "id", lambda p: p.get("name") or "page sans nom")
+    manque = ""
+    if not comptes or not pages:
+        manque = ("<p class=\"petit\">⚠️ Il manque un compte publicitaire ou une page : "
+                  "vérifie que tu as bien un compte d'annonces, et qu'il est rattaché à ta page.</p>")
+    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Tu choisis — Pubmeta</title>
+<link rel="icon" type="image/png" href="/icone-192.png">
+<style>
+ :root{{color-scheme:light}}
+ body{{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 18px;line-height:1.6}}
+ .carte{{max-width:560px;margin:0 auto;background:#fff;border:1px solid #e8edf4;border-radius:20px;
+        padding:28px 24px;box-shadow:0 18px 44px -22px rgba(15,23,42,.18)}}
+ h1{{font-size:22px;margin:0 0 6px}} label{{display:block;font-weight:700;color:#334155;
+      font-size:14px;margin:18px 0 6px}}
+ select{{width:100%;padding:13px;border:1px solid #dfe5ef;border-radius:12px;font-size:15px;background:#fff}}
+ button{{margin-top:22px;width:100%;padding:16px;border:0;border-radius:13px;background:#1877f2;
+        color:#fff;font-size:16.5px;font-weight:700}}
+ .petit{{color:#8896a8;font-size:13px;margin:8px 0 0}}
+ .signature{{color:#94a3b8;font-size:12.5px;margin:22px 0 0;text-align:center}}
+ .signature b{{color:#64748b;font-weight:600}}
+</style></head><body><div class="carte">
+<h1>Dernière étape</h1>
+<p class="petit">Tu es bien connecté. Dis-moi avec quel compte et quelle page je travaille.</p>
+{manque}
+<form method="get" action="/publicite-valider">
+<input type="hidden" name="id" value="{identifiant}">
+<label for="compte">Ton compte publicitaire</label>
+<select id="compte" name="compte">{choix_comptes}</select>
+<label for="page">Ta page Facebook</label>
+<select id="page" name="page">{choix_pages}</select>
+<button>Terminer</button>
+</form>
+<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+</div></body></html>"""
+
+
+PUBLICATIONS = {}          # identifiant -> {jeton, comptes, pages}, le temps du parcours
+
+
+def envoyer_telegram(jeton_bot, chat, texte):
+    """Prévient par Telegram. C'est le canal privé déjà en place — pas de copier-coller."""
+    if not jeton_bot or not chat:
+        return False
+    donnees = urllib.parse.urlencode({"chat_id": chat, "text": texte,
+                                      "disable_web_page_preview": "true"}).encode()
+    try:
+        requete = urllib.request.Request(f"https://api.telegram.org/bot{jeton_bot}/sendMessage",
+                                         data=donnees)
+        urllib.request.urlopen(requete, timeout=20).read()
+        return True
+    except Exception as erreur:  # noqa: BLE001 — l'échec ne doit pas casser le parcours
+        print(f"[publication] Telegram injoignable : {erreur}", flush=True)
+        return False
 
 
 def faire_audit(jeton, periode="last_30d"):
@@ -335,13 +543,13 @@ def _prevenir_telegram(chat_id, texte):
 
 
 # ─────────────────────────────────── l'application installable (PWA, 10/10/2026)
-# CE QUE ÇA CHANGE POUR LE CLIENT, en une phrase : depuis son navigateur, deux appuis et « Mon Audit »
+# CE QUE ÇA CHANGE POUR LE CLIENT, en une phrase : depuis son navigateur, deux appuis et « Pubmeta »
 # s'ajoute à son écran d'accueil — avec son icône, en plein écran, comme une application. Sans magasin,
 # sans rien à installer de compliqué, et sans frais. C'est ça, « l'appli installable » demandée.
 # Chrome réclame trois choses pour l'autoriser : une adresse HTTPS (Render ✓), un MANIFESTE et un
 # SERVICE WORKER. Les icônes sont de vrais PNG dessinés dans le projet (voir fabriquer-icones.py).
 MANIFESTE = """{
- "name": "Mon Audit", "short_name": "Mon Audit", "lang": "fr",
+ "name": "Pubmeta", "short_name": "Pubmeta", "lang": "fr",
  "start_url": "/", "scope": "/", "display": "standalone",
  "background_color": "#0f1115", "theme_color": "#0f1115",
  "description": "Dis pourquoi ta publicité ne te rapporte pas de commandes. Par José Ledanite.",
@@ -365,7 +573,7 @@ def _page_simple(titre, texte, code_entete="200"):
     """Une petite page claire pour les impasses : message court, jamais de page blanche."""
     return ('<!doctype html><html lang="fr"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            f'<title>{titre} — Mon Audit</title><style>'
+            f'<title>{titre} — Pubmeta</title><style>'
             ':root{color-scheme:light}'
             'body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;'
             'font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;'
@@ -422,7 +630,7 @@ def _ranger(jeton, **etat):
 
 
 PAGE_ATTENTE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Analyse en cours — Mon Audit</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Analyse en cours — Pubmeta</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -472,7 +680,7 @@ PAGE_ATTENTE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 
 
 PAGE_RAPPORT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Mon Audit</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Pubmeta</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -497,7 +705,7 @@ PAGE_RAPPORT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <div class="ok">Ton rapport est complet ci-dessous. Tu peux l'imprimer ou l'enregistrer en PDF.</div>
 <pre>__RAPPORT__</pre>
 <button class="bouton" onclick="window.print()">Imprimer / enregistrer en PDF</button>
-<p class="signature">Mon Audit — par <b>José Ledanite</b></p>
+<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 
@@ -509,7 +717,7 @@ ICONES_PWA = ("icone-192.png", "icone-512.png", "icone-masquable-512.png",
               "icone-apple-180.png", "iparv.png")
 
 
-def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8080):
+def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8080, jeton_bot=None):
     class Traitement(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
@@ -579,6 +787,52 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                 self._envoyer_html(PAGE_RAPPORT.replace("__RAPPORT__", _enrichir(d["texte"])))
                 return
 
+            # ── LE BOUTON QUI GÉNÈRE LE JETON (José : « aucun débutant n'ira le chercher lui-même »)
+            if analyse.path == "/publicite":
+                chat_id = verifier_etat(parametres.get("state", ""), secret_liens) if \
+                    parametres.get("state") else (parametres.get("chat") or "")
+                etat = signer(chat_id, secret_liens, mode="pub")
+                self._envoyer_html(PAGE_PUB_BOUTON.replace("__LIEN__", url_de_connexion(
+                    app_id, adresse_publique, etat, droits=DROITS_PUBLICATION)))
+                return
+
+            if analyse.path == "/publicite-valider":
+                fiche = PUBLICATIONS.get(parametres.get("id", ""))
+                if not fiche:
+                    self._envoyer_html(_page_simple("Cette étape a expiré",
+                        "Rouvre la page « Créer mes publicités » et recommence : cela prend "
+                        "dix secondes."), 404)
+                    return
+                try:
+                    compte = fiche["comptes"][int(parametres.get("compte", "1")) - 1]
+                    page = fiche["pages"][int(parametres.get("page", "1")) - 1]
+                except (ValueError, IndexError, KeyError):
+                    self._envoyer_html(_page_simple("Choix incomplet",
+                        "Reviens en arrière et choisis un compte et une page dans les listes."), 400)
+                    return
+                reglages = {"jeton": fiche["jeton"], "compte_publicitaire": f"act_{compte['account_id']}",
+                            "page_id": page["id"], "but": "trafic",
+                            "devise": compte.get("currency", "XOF"),
+                            "compte_nom": compte.get("name"), "page_nom": page.get("name")}
+                # Le jeton part par Telegram : c'est le canal privé déjà en place, et l'utilisateur
+                # n'a RIEN à copier. Le message porte un repère lisible par la machine locale.
+                message = ("✅ Autorisation réussie.\n\n"
+                           f"Compte : {reglages['compte_nom']} ({reglages['compte_publicitaire']})\n"
+                           f"Page : {reglages['page_nom']} ({reglages['page_id']})\n"
+                           f"Devise : {reglages['devise']}\n\n"
+                           "L'outil sur ton téléphone va s'installer tout seul avec ces réglages.\n\n"
+                           "PUB-CONFIG "
+                           + json.dumps(reglages, ensure_ascii=False))
+                envoye = envoyer_telegram(jeton_bot, fiche["chat"], message)
+                del PUBLICATIONS[parametres.get("id", "")]
+                suite = ("Tes réglages sont enregistrés : tu peux créer une publicité tout de suite."
+                         if envoye else
+                         "L'autorisation est bonne, mais je n'ai pas pu prévenir ton téléphone "
+                         "par Telegram. Ouvre la conversation avec ton bot et appuie sur DÉMARRER, "
+                         "puis recommence — ça prend dix secondes.")
+                self._envoyer_html(PAGE_PUB_FIN.replace("__MESSAGE__", suite))
+                return
+
             if analyse.path in ("/", "/index.html"):
                 etat = signer(parametres.get("chat", ""), secret_liens)
                 # ⚠️ ON REMPLACE UN JETON, ON NE FORMATTE PAS. La page contient de vraies accolades
@@ -586,7 +840,8 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                 # ${} laisserait « __LIEN__ » en clair — le bouton « Continuer avec Facebook » ne
                 # mènerait plus nulle part, exactement le défaut signalé par José.
                 self._envoyer_html(PAGE_ACCUEIL.replace(
-                    "__LIEN__", url_de_connexion(app_id, adresse_publique, etat)))
+                    "__LIEN__", url_de_connexion(app_id, adresse_publique, etat)).replace(
+                    "__LIEN_PUB__", "/publicite?state=" + urllib.parse.quote(etat)))
                 return
 
             if analyse.path == "/confidentialite":
@@ -598,6 +853,31 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                 if chat_id is None:
                     self._envoyer_html("<h1>Lien invalide ou expiré.</h1>"
                                        "<p>Demande un nouveau lien au bot.</p>", 403)
+                    return
+                # ── LE MÊME RETOUR SERT AUX DEUX MÉTIERS, ET C'EST VOULU : Meta n'accepte que les
+                # adresses de retour déclarées dans son tableau de bord. Le mode voyage dans le lien
+                # signé, donc créer des publicités n'exige AUCUNE manipulation chez Meta.
+                if mode_du_lien(parametres.get("state", "")) == "pub":
+                    if parametres.get("error"):
+                        self._envoyer_html(_page_simple("Accès refusé",
+                            f"Facebook a répondu : {parametres['error'][:160]}"), 403)
+                        return
+                    code = parametres.get("code")
+                    if not code:
+                        self._envoyer_html(_page_simple("Réponse incomplète de Facebook",
+                            "Aucun code d'autorisation n'est revenu."), 400)
+                        return
+                    try:
+                        jeton = echanger_le_code(code, app_id, app_secret, adresse_publique)
+                        comptes, pages = lire_comptes_et_pages(jeton)
+                    except (ErreurGraph, connexion.ErreurMeta) as erreur:
+                        self._envoyer_html(_page_simple("Je n'ai pas pu me connecter",
+                            f"Facebook a refusé la demande : {str(erreur)[:220]}"), 500)
+                        return
+                    identifiant = secrets.token_urlsafe(12)
+                    PUBLICATIONS[identifiant] = {"jeton": jeton, "comptes": comptes, "pages": pages,
+                                                 "chat": chat_id}
+                    self._envoyer_html(page_de_choix(identifiant, comptes, pages))
                     return
                 if parametres.get("error"):
                     self._envoyer_html(f"<h1>Accès refusé</h1><p>{parametres['error']}</p>", 403)
@@ -666,6 +946,7 @@ if __name__ == "__main__":
     SECRET_LIENS = _secret("audit-secret-liens")
     ADRESSE = os.environ.get("ADRESSE_PUBLIQUE") or _secret("audit-adresse-publique")
     port = int(os.environ.get("PORT", "8080"))
-    serveur = fabriquer_serveur(APP_ID, APP_SECRET, ADRESSE, SECRET_LIENS, port)
+    serveur = fabriquer_serveur(APP_ID, APP_SECRET, ADRESSE, SECRET_LIENS, port,
+                                jeton_bot=_secret("telegram-bot-audit-token", obligatoire=False))
     print(f"Écoute sur le port {port} · adresse publique : {ADRESSE}", flush=True)
     serveur.serve_forever()

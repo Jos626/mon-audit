@@ -38,6 +38,7 @@ import json
 import os
 import secrets
 import sys
+import threading      # l'audit tourne dans un fil : le client n'attend pas dans une requête web
 import time
 import urllib.error
 import urllib.parse
@@ -255,9 +256,13 @@ le client peut le retirer à tout moment.</p>
 <p>Le jeton d'accès vit le temps de l'audit et n'est pas conservé sur nos serveurs. Les rapports sont
 envoyés par Telegram à la personne qui a lancé l'audit. Aucune donnée n'est revendue ni transmise à
 un annonceur.</p>
-<h2>Effacement</h2>
-<p>La commande <b>/efface</b> du bot supprime les données enregistrées. Une demande peut aussi être
-adressée directement à l'éditeur du service.</p>
+<h2>Ce que nous gardons, et combien de temps</h2>
+<p><b>Rien.</b> Le rapport d'audit vit en mémoire le temps d'une heure, puis il est oublié. Il n'est
+jamais écrit sur disque, jamais conservé, jamais transmis à un tiers ni revendu. Le service n'a donc
+aucune donnée personnelle à effacer : il n'en détient pas. Si tu veux arrêter, il suffit de retirer
+l'accès dans tes réglages Facebook — et tout s'arrête là.</p>
+<h2>Nous joindre</h2>
+<p>Pour toute question sur ces points, écris à l'éditeur du service : José Ledanite.</p>
 </div></body></html>"""
 
 PAGE_RESULTAT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
@@ -348,6 +353,146 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', () => {});   // rien en cache : le réseau répond toujours
 """
 
+# ─────────────────────────────────────────── les deux petites aides des pages
+def _page_simple(titre, texte, code_entete="200"):
+    """Une petite page claire pour les impasses : message court, jamais de page blanche."""
+    return ('<!doctype html><html lang="fr"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<title>{titre} — Mon Audit</title><style>'
+            ':root{color-scheme:light}'
+            'body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;'
+            'font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;'
+            'align-items:center;justify-content:center;padding:26px 18px}'
+            '.carte{width:100%;max-width:440px;background:#fff;border:1px solid #e8edf4;'
+            'border-radius:22px;padding:32px 24px;box-shadow:0 18px 44px -18px rgba(15,23,42,.18)}'
+            'h1{font-size:21px;margin:0 0 10px}p{color:#475569;font-size:15px;line-height:1.6;margin:0}'
+            'a{color:#1877f2}'
+            '</style></head><body><div class="carte">'
+            f'<h1>{titre}</h1><p>{texte}</p></div></body></html>')
+
+
+def _enrichir(texte):
+    """Rend le rapport affichable dans une page : échappé, puis le gras markdown mis en forme.
+
+    ⚠️ ON ÉCHAPPE D'ABORD, ON MET EN FORME ENSUITE. Le rapport contient des noms de pages, de
+    campagnes et des commentaires de clients : si un commentaire contient « < », non échappé, il
+    casserait la page — voire y injecterait du code. L'échappement d'abord est la seule bonne
+    manière, même si le texte vient de nos propres fonctions.
+    """
+    import html as _html
+    import re as _re
+    protege = _html.escape(texte or "")
+    protege = _re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", protege)
+    protege = _re.sub(r"`([^`]+)`", r"<code>\1</code>", protege)
+    return protege
+
+
+# ─────────────────────── LES RAPPORTS, GARDÉS EN MÉMOIRE (10/10/2026)
+# POURQUOI CE CHANGEMENT. José, le 10/10/2026 : « Le bot audit va me fatiguer, également mes
+# clients. Je vais le supprimer. » Il a raison sur le fond : le client devait ouvrir Telegram, écrire
+# au bot, puis revenir sur le site. Trois gestes pour un seul service. Or le bot ne servait qu'à UNE
+# chose : LIVRER le rapport. Donc on livre le rapport là où le client est déjà — sur la page.
+#
+# ⚠️ EN MÉMOIRE, JAMAIS SUR DISQUE, ET ÇA SE PÉRIME. L'audit parle du compte publicitaire de
+# quelqu'un : le garder au chaud dans une dict de RAM, effacé au bout d'une heure, est le
+# comportement le plus honnête possible — et cohérent avec la page /confidentialite qui promet
+# qu'aucun jeton ne survit à l'audit. Un redémarrage du service perd les rapports en cours : le
+# client relance, c'est tout. On sacrifie un peu de confort pour ne rien stocker.
+RAPPORTS = {}
+RAPPORTS_DUREE = 3600          # une heure, puis oubliés
+RAPPORTS_MAX = 200             # borne de sécurité : la mémoire d'un service gratuit
+
+
+def _ranger(jeton, **etat):
+    """Range l'état d'un audit. Purge au passage ce qui a expiré."""
+    maintenant = time.time()
+    for cle in [k for k, v in RAPPORTS.items() if maintenant - v.get("quand", 0) > RAPPORTS_DUREE]:
+        RAPPORTS.pop(cle, None)
+    while len(RAPPORTS) > RAPPORTS_MAX:
+        RAPPORTS.pop(next(iter(RAPPORTS)), None)
+    RAPPORTS.setdefault(jeton, {})
+    RAPPORTS[jeton].update(etat, quand=maintenant)
+
+
+PAGE_ATTENTE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Analyse en cours — Mon Audit</title>
+<link rel="icon" type="image/png" href="/icone-192.png">
+<style>
+ :root{color-scheme:light}
+ body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;
+      display:flex;align-items:center;justify-content:center;padding:26px 18px}
+ .carte{width:100%;max-width:440px;background:#fff;border:1px solid #e8edf4;border-radius:22px;
+        padding:36px 26px;text-align:center;box-shadow:0 18px 44px -18px rgba(15,23,42,.18)}
+ .ronde{width:52px;height:52px;margin:0 auto 20px;border:4px solid #e8f8ee;border-top-color:#22c55e;
+        border-radius:50%;animation:tourne 1s linear infinite}
+ @keyframes tourne{to{transform:rotate(360deg)}}
+ h1{font-size:21px;margin:0 0 8px}
+ p{color:#475569;font-size:15px;line-height:1.6;margin:0}
+ .compte{color:#94a3b8;font-size:13px;margin-top:16px}
+ .echec{background:#fff7ed;border-left:4px solid #f97316;color:#9a3412;border-radius:10px;
+        padding:12px 14px;font-size:14px;text-align:left;margin-top:16px}
+</style></head><body><div class="carte">
+<div class="ronde" id="ronde"></div>
+<h1 id="titre">J'analyse ton compte…</h1>
+<p id="dit">Je lis tes statistiques sur 30 jours, ta liste de pages et les commentaires de tes publications. Cela prend quelques dizaines de secondes.</p>
+<p class="compte" id="compte">Ne ferme pas cette page.</p>
+</div>
+<script>
+ var essais = 0, jeton = "__JETON__";
+ function verifie() {
+   essais++;
+   fetch("/etat?jeton=" + encodeURIComponent(jeton)).then(function (r) { return r.json(); }).then(function (d) {
+     if (d.etat === "pret") { window.location.href = "/resultat?jeton=" + encodeURIComponent(jeton); return; }
+     if (d.etat === "erreur") {
+       document.getElementById("ronde").style.display = "none";
+       document.getElementById("titre").textContent = "Je n'ai pas pu terminer";
+       document.getElementById("compte").style.display = "none";
+       document.getElementById("dit").outerHTML = '<div class="echec">' + (d.message || "Réessaie dans un instant.") + '</div>';
+       return;
+     }
+     document.getElementById("compte").textContent = "Analyse en cours… (" + (essais * 3) + " s)";
+     if (essais < 60) { setTimeout(verifie, 3000); }
+     else {
+       document.getElementById("ronde").style.display = "none";
+       document.getElementById("titre").textContent = "C'est plus long que prévu";
+       document.getElementById("dit").textContent = "Facebook répond lentement. Recharge la page dans un instant.";
+     }
+   }).catch(function () { if (essais < 60) { setTimeout(verifie, 3000); } });
+ }
+ setTimeout(verifie, 1200);
+</script></body></html>"""
+
+
+PAGE_RAPPORT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Mon Audit</title>
+<link rel="icon" type="image/png" href="/icone-192.png">
+<style>
+ :root{color-scheme:light}
+ body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:22px 16px 40px;line-height:1.65}
+ .carte{max-width:640px;margin:0 auto;background:#fff;border:1px solid #e8edf4;border-radius:20px;
+        padding:26px 22px;box-shadow:0 18px 44px -22px rgba(15,23,42,.18)}
+ h1{font-size:22px;margin:0 0 4px}
+ .sous{color:#64748b;font-size:14px;margin:0 0 18px}
+ .ok{background:#e8f8ee;border-left:4px solid #22c55e;padding:12px 14px;border-radius:10px;
+     color:#166534;font-size:14px;margin:0 0 18px}
+ pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14.5px;color:#334155;
+     background:#f7f9fc;border:1px solid #eef2f7;border-radius:12px;padding:16px;margin:0}
+ .bouton{display:inline-block;margin:18px 0 0;background:#0f172a;color:#fff;text-decoration:none;
+         font-weight:600;font-size:14px;padding:12px 20px;border-radius:12px;border:0;cursor:pointer}
+ @media print{.bouton,.sous{display:none}body{background:#fff}.carte{border:0;box-shadow:none}}
+</style></head><body><div class="carte">
+<h1>Ton audit</h1>
+<p class="sous">Voici ce que disent tes chiffres.</p>
+<div class="ok">Ton rapport est complet ci-dessous. Tu peux l'imprimer ou l'enregistrer en PDF.</div>
+<pre>__RAPPORT__</pre>
+<button class="bouton" onclick="window.print()">Imprimer / enregistrer en PDF</button>
+</div></body></html>"""
+
+
+DETAILS = {"etat": "en_cours"}
+
 FICHIERS_PWA = {"manifeste.json": ("application/manifest+json; charset=utf-8", MANIFESTE),
                 "sw.js": ("text/javascript; charset=utf-8", SERVICE_WORKER)}
 ICONES_PWA = ("icone-192.png", "icone-512.png", "icone-masquable-512.png",
@@ -390,6 +535,40 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                     self.send_error(404)
                 return
 
+            # ── la livraison du rapport, dans la page (le bot Telegram n'est plus nécessaire)
+            if analyse.path == "/attente":
+                jeton_attente = parametres.get("jeton", "")
+                if jeton_attente not in RAPPORTS:
+                    self._envoyer_html(_page_simple("Cette analyse a expiré",
+                        "Reviens au début et appuie de nouveau sur « Continuer avec Facebook »."), 404)
+                    return
+                self._envoyer_html(PAGE_ATTENTE.replace("__JETON__", jeton_attente))
+                return
+
+            if analyse.path == "/etat":
+                d = RAPPORTS.get(parametres.get("jeton", ""))
+                corps = ({"etat": d.get("etat"), "message": d.get("message", "")} if d
+                         else {"etat": "inconnu", "message": "Cette analyse a expiré."})
+                self._envoyer_octets(json.dumps(corps).encode(), "application/json; charset=utf-8")
+                return
+
+            if analyse.path == "/resultat":
+                jeton_res = parametres.get("jeton", "")
+                d = RAPPORTS.get(jeton_res)
+                if not d:
+                    self._envoyer_html(_page_simple("Ce lien a expiré",
+                        "Les rapports ne sont gardés qu'une heure, et le service oublie tout quand il "
+                        "s'endort. Recommence : ouvre le lien et appuie sur « Continuer avec "
+                        "Facebook »."), 404)
+                    return
+                if d.get("etat") != "pret":
+                    self._envoyer_html(_page_simple("Ton audit n'est pas encore prêt",
+                        "Suis l'analyse ici : <a href=\"/attente?jeton=" + jeton_res +
+                        "\">voir où j'en suis</a>."))
+                    return
+                self._envoyer_html(PAGE_RAPPORT.replace("__RAPPORT__", _enrichir(d["texte"])))
+                return
+
             if analyse.path in ("/", "/index.html"):
                 etat = signer(parametres.get("chat", ""), secret_liens)
                 # ⚠️ ON REMPLACE UN JETON, ON NE FORMATTE PAS. La page contient de vraies accolades
@@ -419,15 +598,35 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                     return
                 try:
                     jeton = echanger_le_code(code, app_id, app_secret, adresse_publique)
-                    texte, erreur = faire_audit(jeton)
                 except (ErreurGraph, connexion.ErreurMeta) as e:
-                    texte, erreur = None, f"⛔ Facebook a refusé la demande : {str(e)[:200]}"
-                if erreur or not texte:
-                    self._envoyer_html(f"<h1>Je n'ai pas pu faire l'audit</h1><p>{erreur}</p>", 200)
+                    self._envoyer_html(_page_simple("Je n'ai pas pu me connecter",
+                                                    f"Facebook a refusé la demande : {str(e)[:200]}"))
                     return
-                envoye = _prevenir_telegram(chat_id, texte)
-                self._envoyer_html(PAGE_RESULTAT.replace(
-                    apercu=(texte[:2200] if not envoye else "Rapport envoyé dans Telegram.")))
+
+                # ⚠️ L'AUDIT PART DANS UN FIL, ET LE CLIENT REÇOIT TOUT DE SUITE UNE PAGE.
+                # Deux raisons, toutes les deux vécues : un audit interroge Meta plusieurs fois
+                # (5 à 30 secondes), et un navigateur de téléphone abandonne la requête bien avant
+                # la fin — le client verrait une page blanche après avoir autorisé l'accès, ce qui
+                # est la pire des impressions. On lui donne donc une page qui se met à jour seule.
+                cle = hashlib.sha256((jeton + str(time.time())).encode()).hexdigest()[:24]
+                _ranger(cle, etat="en_cours")
+
+                def _auditer():
+                    try:
+                        texte, erreur = faire_audit(jeton)
+                        if erreur or not texte:
+                            _ranger(cle, etat="erreur", message=erreur or "L'audit est revenu vide.")
+                        else:
+                            _ranger(cle, etat="pret", texte=texte)
+                    except Exception as e:                     # jamais de fil qui meurt en silence
+                        _ranger(cle, etat="erreur",
+                                message=f"Une erreur inattendue est survenue ({type(e).__name__}). "
+                                        f"Relance l'audit, et si ça recommence, dis-le à Laura.")
+
+                threading.Thread(target=_auditer, daemon=True).start()
+                self.send_response(303)
+                self.send_header("Location", "/attente?jeton=" + cle)
+                self.end_headers()
                 return
 
             self._envoyer_html("<h1>Page introuvable</h1>", 404)

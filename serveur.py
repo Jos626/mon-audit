@@ -156,7 +156,12 @@ def verifier_etat(etat, secret, validite=3600):
 # ─────────────────────────────────────────────────────────── les pages
 PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mon Audit</title><style>
+<title>Mon Audit</title>
+<link rel="manifest" href="/manifeste.json">
+<meta name="theme-color" content="#0f1115">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="/icone-apple-180.png">
+<link rel="icon" type="image/png" href="/icone-192.png"><style>
  body{{font-family:system-ui,-apple-system,sans-serif;background:#0f1115;color:#eef1f6;
       margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}}
  .carte{{max-width:430px;padding:30px;text-align:center}}
@@ -182,6 +187,8 @@ pages et les commentaires de tes publications. <b>Rien d'autre.</b> L'applicatio
 modifie aucune campagne et ne dépense pas un franc.</div>
 <p class="petit">Ton mot de passe Facebook ne passe jamais par ici : tu le tapes sur les pages de
 Facebook, et tu peux retirer l'accès quand tu veux.</p>
+<p class="petit">📱 Pour la garder sous la main : menu ⋮ de ton navigateur → « Ajouter à l'écran
+d'accueil ». Elle s'ouvrira comme une application, sans passer par un magasin.</p>
 </div></body></html>"""
 
 PAGE_CONFIDENTIALITE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
@@ -257,6 +264,38 @@ def _prevenir_telegram(chat_id, texte):
         return False
 
 
+# ─────────────────────────────────── l'application installable (PWA, 10/10/2026)
+# CE QUE ÇA CHANGE POUR LE CLIENT, en une phrase : depuis son navigateur, deux appuis et « Mon Audit »
+# s'ajoute à son écran d'accueil — avec son icône, en plein écran, comme une application. Sans magasin,
+# sans rien à installer de compliqué, et sans frais. C'est ça, « l'appli installable » demandée.
+# Chrome réclame trois choses pour l'autoriser : une adresse HTTPS (Render ✓), un MANIFESTE et un
+# SERVICE WORKER. Les icônes sont de vrais PNG dessinés dans le projet (voir fabriquer-icones.py).
+MANIFESTE = """{
+ "name": "Mon Audit", "short_name": "Mon Audit", "lang": "fr",
+ "start_url": "/", "scope": "/", "display": "standalone",
+ "background_color": "#0f1115", "theme_color": "#0f1115",
+ "description": "Dis pourquoi ta publicité ne te rapporte pas de commandes.",
+ "icons": [
+  {"src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+  {"src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+  {"src": "/icone-masquable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+ ]
+}"""
+
+# ⚠️ LE SERVICE WORKER NE MET RIEN EN CACHE — c'est un choix, pas un oubli. L'audit lit le compte
+# publicitaire du client : une page resservie depuis un cache est une page qui peut mentir. Il ne sert
+# qu'à rendre l'application installable.
+SERVICE_WORKER = """self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', () => {});   // rien en cache : le réseau répond toujours
+"""
+
+FICHIERS_PWA = {"manifeste.json": ("application/manifest+json; charset=utf-8", MANIFESTE),
+                "sw.js": ("text/javascript; charset=utf-8", SERVICE_WORKER)}
+ICONES_PWA = ("icone-192.png", "icone-512.png", "icone-masquable-512.png",
+              "icone-apple-180.png", "iparv.png")
+
+
 def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8080):
     class Traitement(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -268,9 +307,30 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
             self.end_headers()
             self.wfile.write(html.encode())
 
+        def _envoyer_octets(self, donnees, type_mime):
+            self.send_response(200)
+            self.send_header("Content-Type", type_mime)
+            self.send_header("Content-Length", str(len(donnees)))
+            self.end_headers()
+            self.wfile.write(donnees)
+
         def do_GET(self):
             analyse = urllib.parse.urlparse(self.path)
             parametres = dict(urllib.parse.parse_qsl(analyse.query))
+
+            # ── l'application installable : manifeste, service worker, icônes
+            if analyse.path in ("/manifeste.json", "/sw.js"):
+                type_mime, texte = FICHIERS_PWA[analyse.path.lstrip("/")]
+                self._envoyer_octets(texte.encode(), type_mime)
+                return
+
+            if analyse.path.lstrip("/") in ICONES_PWA:
+                try:
+                    with open(os.path.join(ICI, analyse.path.lstrip("/")), "rb") as f:
+                        self._envoyer_octets(f.read(), "image/png")
+                except OSError:
+                    self.send_error(404)
+                return
 
             if analyse.path in ("/", "/index.html"):
                 etat = signer(parametres.get("chat", ""), secret_liens)

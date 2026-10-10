@@ -50,6 +50,7 @@ sys.path.insert(0, ICI)
 
 import audit           # noqa: E402
 import connexion       # noqa: E402
+import pages as pages_meta   # noqa: E402 — les Pages du client et leurs publications déjà en ligne
 import rapport         # noqa: E402
 
 VERSION_API = "v21.0"
@@ -486,6 +487,107 @@ def page_de_choix(identifiant, comptes, pages):
 </div></body></html>"""
 
 
+PAGE_CONTENU = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ta publicité — Pubmeta</title>
+<link rel="icon" type="image/png" href="/icone-192.png">
+<style>
+ :root{color-scheme:light}
+ body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 18px;line-height:1.6}
+ .carte{max-width:600px;margin:0 auto;background:#fff;border:1px solid #e8edf4;border-radius:20px;
+        padding:28px 24px;box-shadow:0 18px 44px -22px rgba(15,23,42,.18)}
+ h1{font-size:22px;margin:0 0 6px}
+ .petit{color:#8896a8;font-size:13px;margin:8px 0 0}
+ .offre{border:2px solid #e8edf4;border-radius:16px;padding:16px;margin:16px 0;cursor:pointer;display:block}
+ .offre.actif{border-color:#1877f2;background:#f5f9ff}
+ .offre b{display:block;font-size:16px;color:#0f172a}
+ .offre span{color:#5a6b80;font-size:14px}
+ .liste{margin-top:10px;max-height:260px;overflow:auto}
+ .pub{border:1px solid #e8edf4;border-radius:12px;padding:10px;margin:8px 0;display:flex;gap:10px;
+      align-items:center}
+ .pub img{width:54px;height:54px;object-fit:cover;border-radius:9px;flex:0 0 auto;background:#eef2f8}
+ .pub div{font-size:13.5px;color:#334155}
+ button{margin-top:22px;width:100%;padding:16px;border:0;border-radius:13px;background:#1877f2;
+        color:#fff;font-size:16.5px;font-weight:700}
+ .signature{color:#94a3b8;font-size:12.5px;margin:22px 0 0;text-align:center}
+ .signature b{color:#64748b;font-weight:600}
+</style></head><body><div class="carte">
+<h1>Ta publicité</h1>
+<p class="petit">Dernière question : de quoi parle ta publicité ?</p>
+__SOUCI__
+<form method="get" action="/publicite-fin">
+<input type="hidden" name="id" value="__ID__">
+<input type="hidden" name="compte" value="__COMPTE__">
+<input type="hidden" name="page" value="__PAGE__">
+<label class="offre actif"><b>① Je crée une publicité neuve</b>
+<span>Je te donne une image et une idée, l'outil écrit le texte et fabrique la publicité.</span></label>
+<label class="offre"><b>② J'utilise une publication déjà en ligne</b>
+<span>Choisis une publication de ta page : la publicité s'appuiera dessus, sans rien refabriquer.</span></label>
+<div class="liste" id="liste">__PUBLICATIONS__</div>
+<button>Terminer</button>
+</form>
+<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+</div>
+<script>
+// Cocher une publication revient à choisir l'option « publication déjà en ligne » : deux gestes pour
+// une seule intention, c'est un geste de trop pour un débutant.
+document.querySelectorAll('input[name=contenu]').forEach(function (r) {
+  r.addEventListener('change', function () {
+    document.querySelectorAll('.offre').forEach(function (o) { o.classList.remove('actif'); });
+    document.querySelectorAll('.offre')[1].classList.add('actif');
+  });
+});
+// ⛔ AUCUN CHAMP CACHÉ ICI (défaut trouvé par test le 10/10/2026) : un champ caché du même nom que
+// les cases à cocher aurait envoyé « rien » en même temps que le choix du client, et le serveur
+// aurait pu lire « rien » — donc créer une publicité neuve alors que le client avait désigné sa
+// publication. Ne rien cocher veut DÉJÀ dire « publicité neuve » : c'est le serveur qui le déduit.
+document.querySelectorAll('.offre')[0].addEventListener('click', function () {
+  document.querySelectorAll('input[name=contenu]').forEach(function (r) { r.checked = false; });
+});
+</script>
+</body></html>"""
+
+
+def page_du_contenu(identifiant, index_compte, index_page, fiche):
+    """L'écran où le client dit COMMENT il veut sa publicité (demande de José, 10/10/2026).
+
+    Deux chemins, et il choisit :
+      ① l'outil fabrique le contenu (image + idée) — la voie de base ;
+      ② la publicité s'appuie sur une publication DÉJÀ en ligne sur sa page — la voie qui marche
+         même quand l'application Meta est encore en développement.
+
+    ⚠️ ON MONTRE LE TEXTE ET LA PHOTO des publications, pas leurs identifiants : un client reconnaît
+    « la photo de la nappe bleue », pas « 104084798748794_1091154536706350 ».
+    """
+    compte = fiche["comptes"][index_compte - 1]
+    page = fiche["pages"][index_page - 1]
+    souci = ""
+    morceaux = []
+    try:
+        pages_avec_jeton = pages_meta.lister_pages(fiche["jeton"])
+        la_page = next((p for p in pages_avec_jeton if p.get("id") == page.get("id")), None)
+        publications = pages_meta.lister_publications(la_page, 12) if la_page else []
+        for publication in publications:
+            image = (f'<img src="{publication["image"]}" alt="" loading="lazy">'
+                     if publication.get("image") else '<img alt="">')
+            texte = publication["apercu"] or "(publication sans texte)"
+            case = (f'<label class="pub"><input type="radio" name="contenu" '
+                    f'value="{publication["id"]}">{image}<div>{texte}</div></label>')
+            morceaux.append(case)
+        if not morceaux:
+            morceaux.append('<p class="petit">Aucune publication trouvée sur cette page : prends la '
+                            'première option.</p>')
+    except Exception as erreur:  # noqa: BLE001 — on informe, on ne bloque pas le parcours
+        souci = (f'<p class="petit">⚠️ Impossible de lire les publications de cette page : '
+                 f'{erreur} Tu peux quand même créer une publicité neuve.</p>')
+    return (PAGE_CONTENU
+            .replace("__ID__", identifiant)
+            .replace("__COMPTE__", str(index_compte))
+            .replace("__PAGE__", str(index_page))
+            .replace("__PUBLICATIONS__", "\n".join(morceaux))
+            .replace("__SOUCI__", souci))
+
+
 PUBLICATIONS = {}          # identifiant -> {jeton, comptes, pages}, le temps du parcours
 # ⚠️ LES REGLAGES ATTENDENT ICI QUE LE TELEPHONE VIENNE LES PRENDRE. C'est ce qui évite le
 # copier-coller : l'utilisateur ne voit jamais un jeton, et la machine qui publie les publicités le
@@ -857,17 +959,46 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                     self._envoyer_html(_page_simple("Choix incomplet",
                         "Reviens en arrière et choisis un compte et une page dans les listes."), 400)
                     return
+                # ⚠️ ON NE TERMINE PLUS ICI (José, 10/10/2026) : le client choisit d'abord COMMENT il
+                # veut sa publicité — neuve, fabriquée par l'outil, ou appuyée sur une publication
+                # déjà en ligne. Le parcours reste « je choisis, et le job commence ».
+                self._envoyer_html(page_du_contenu(parametres.get("id", ""),
+                                                   int(parametres.get("compte", "1") or 1),
+                                                   int(parametres.get("page", "1") or 1), fiche))
+                return
+
+            if analyse.path == "/publicite-fin":
+                fiche = PUBLICATIONS.get(parametres.get("id", ""))
+                if not fiche:
+                    self._envoyer_html(_page_simple("Cette étape a expiré",
+                        "Rouvre la page « Créer mes publicités » et recommence : cela prend "
+                        "dix secondes."), 404)
+                    return
+                try:
+                    compte = fiche["comptes"][int(parametres.get("compte", "1")) - 1]
+                    page = fiche["pages"][int(parametres.get("page", "1")) - 1]
+                except (ValueError, IndexError, KeyError):
+                    self._envoyer_html(_page_simple("Choix incomplet",
+                        "Reviens en arrière et choisis un compte et une page dans les listes."), 400)
+                    return
+                contenu = (parametres.get("contenu") or "").strip()
                 reglages = {"jeton": fiche["jeton"], "compte_publicitaire": f"act_{compte['account_id']}",
                             "page_id": page["id"], "but": "trafic",
                             "devise": compte.get("currency", "XOF"),
                             "compte_nom": compte.get("name"), "page_nom": page.get("name")}
+                if contenu:
+                    # La publicité s'appuiera sur cette publication : rien à fabriquer, donc rien que
+                    # Meta puisse refuser — c'est la voie qui fonctionne même en mode développement.
+                    reglages["object_story_id"] = contenu
                 # Le jeton part par Telegram : c'est le canal privé déjà en place, et l'utilisateur
                 # n'a RIEN à copier. Le message porte un repère lisible par la machine locale.
                 message = ("✅ Autorisation réussie.\n\n"
                            f"Compte : {reglages['compte_nom']} ({reglages['compte_publicitaire']})\n"
                            f"Page : {reglages['page_nom']} ({reglages['page_id']})\n"
-                           f"Devise : {reglages['devise']}\n\n"
-                           "Ton outil s'installe tout seul — tu n'as rien à copier.")
+                           f"Devise : {reglages['devise']}\n"
+                           + (f"Contenu : publication existante {contenu}\n" if contenu
+                              else "Contenu : publicité neuve (l'outil écrit le texte)\n")
+                           + "\nTon outil s'installe tout seul — tu n'as rien à copier.")
                 envoye = envoyer_telegram(jeton_bot, fiche["chat"], message)
                 garder_reglages(reglages)
                 del PUBLICATIONS[parametres.get("id", "")]

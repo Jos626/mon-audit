@@ -70,6 +70,18 @@ controle("le service worker est servi (Chrome l'exige pour installer)", code == 
 code, page = get("/")
 page = page.decode(errors="replace")
 controle("la page déclare le manifeste", 'rel="manifest"' in page)
+# ⛔ LE CONTRÔLE QUI MANQUAIT, ET QUI AURAIT ÉVITÉ LE DÉFAUT SIGNALÉ PAR JOSÉ LE 10/10/2026 :
+# « le lien Continuer avec Facebook ne conduit nulle part ». Deux causes possibles — un jeton de
+# remplacement resté en clair, ou un lien vide. On les interdit toutes les deux, explicitement.
+controle("aucun jeton de remplacement ne reste en clair (__LIEN__)", "__LIEN__" not in page)
+controle("aucune accolade de gabarit cassée ({{ )", "{{" not in page)
+import re as _re
+_lien = _re.search(r'class="fb" href="([^"]*)"', page)
+controle("le bouton « Continuer avec Facebook » porte un vrai lien",
+         bool(_lien and _lien.group(1).startswith("https://www.facebook.com/")),
+         f"lien trouvé : {(_lien.group(1)[:60] if _lien else 'aucun')}")
+controle("…et il demande les bonnes permissions, sans la fautive",
+         bool(_lien and "scope=ads_read" in _lien.group(1) and "read_insights" not in _lien.group(1)))
 controle("la page a une icône pour iPhone", "apple-touch-icon" in page)
 controle("la page dit au client comment l'installer", "Ajouter à l'écran" in page)
 

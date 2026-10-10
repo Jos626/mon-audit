@@ -86,8 +86,17 @@ def url_de_connexion(app_id, adresse_publique, etat):
                 "client_id": app_id,
                 "redirect_uri": adresse_publique.rstrip("/") + "/callback",
                 "state": etat,
+                # ⛔ « read_insights » A ÉTÉ RETIRÉE LE 10/10/2026 — ELLE BLOQUAIT TOUT LE DIALOGUE.
+                # Facebook répondait « Invalid Scopes: read_insights » et refusait d'afficher la page
+                # d'autorisation : le bouton « Continuer avec Facebook » ne menait donc nulle part
+                # (constaté par José sur son téléphone). Ce message n'apparaît qu'aux développeurs :
+                # nos clients auraient vu une erreur incompréhensible, ou rien du tout.
+                # read_insights n'est pas une permission de CONNEXION (elle se demande par une autre
+                # voie). Les statistiques publicitaires, elles, viennent bien de « ads_read ».
+                # LEÇON : une seule permission invalide fait échouer TOUTE la demande. Avant de
+                # toucher à cette liste, tester le dialogue (voir tests-permissions-meta.py).
                 "scope": ",".join(("ads_read", "business_management", "pages_show_list",
-                                   "pages_read_engagement", "read_insights")),
+                                   "pages_read_engagement")),
                 "response_type": "code"}))
 
 
@@ -156,73 +165,118 @@ def verifier_etat(etat, secret, validite=3600):
 # ─────────────────────────────────────────────────────────── les pages
 PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mon Audit</title>
+<title>Mon Audit — pourquoi ta pub ne vend pas</title>
 <link rel="manifest" href="/manifeste.json">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#f4f6fb">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="/icone-apple-180.png">
-<link rel="icon" type="image/png" href="/icone-192.png"><style>
- body{{font-family:system-ui,-apple-system,sans-serif;background:#0f1115;color:#eef1f6;
-      margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}}
- .carte{{max-width:430px;padding:30px;text-align:center}}
- h1{{font-size:23px;margin:0 0 6px}}
- p{{color:#a8b0bd;line-height:1.55;font-size:15px}}
- .fb{{display:inline-flex;align-items:center;gap:11px;background:#1877f2;color:#fff;
-      text-decoration:none;font-weight:600;font-size:17px;padding:15px 26px;border-radius:12px;
-      margin:22px 0 14px}}
- .fb svg{{width:22px;height:22px;fill:#fff}}
- .petit{{font-size:12.5px;color:#7c8697;margin-top:18px}}
- .note{{background:#171b23;border-radius:12px;padding:14px;font-size:13.5px;color:#9aa4b2;
-        margin-top:18px;text-align:left}}
+<link rel="icon" type="image/png" href="/icone-192.png">
+<!-- ⛔ CETTE PAGE EST EN THÈME CLAIR, ET LE RESTE MÊME SUR UN TÉLÉPHONE EN MODE SOMBRE.
+     José, le 10/10/2026 : « Écris trop noir, faut revoir ! Je veux une vraie interface magnifique. »
+     Le « color-scheme: light » ci-dessous est ce qui empêche le navigateur d'inverser les couleurs. -->
+<style>
+ :root{color-scheme:light}
+ *{box-sizing:border-box}
+ body{margin:0;background:
+      radial-gradient(900px 420px at 50% -8%,#e5f6ec 0%,rgba(229,246,236,0) 62%),
+      linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);
+      color:#0f172a;min-height:100vh;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+      display:flex;align-items:center;justify-content:center;padding:26px 18px}
+ .carte{width:100%;max-width:440px;background:#fff;border:1px solid #e8edf4;border-radius:22px;
+        padding:34px 26px 26px;text-align:center;
+        box-shadow:0 1px 2px rgba(15,23,42,.04),0 18px 44px -18px rgba(15,23,42,.18)}
+ .logo{width:78px;height:78px;border-radius:20px;display:block;margin:0 auto 18px;
+       box-shadow:0 10px 24px -10px rgba(15,23,42,.45)}
+ .etiquette{display:inline-block;background:#e8f8ee;color:#15803d;font-size:12.5px;font-weight:700;
+            padding:5px 12px;border-radius:999px;margin:0 0 14px;letter-spacing:.2px}
+ h1{font-size:27px;line-height:1.2;margin:0 0 10px;letter-spacing:-.5px}
+ .accroche{color:#475569;font-size:16px;line-height:1.6;margin:0 0 26px}
+ .accroche b{color:#0f172a}
+ .fb{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;
+     background:#1877f2;color:#fff;text-decoration:none;font-weight:700;font-size:17px;
+     padding:17px 20px;border-radius:14px;box-shadow:0 10px 22px -10px rgba(24,119,242,.9);
+     transition:transform .12s ease,box-shadow .12s ease}
+ .fb:active{transform:translateY(1px);box-shadow:0 6px 14px -8px rgba(24,119,242,.9)}
+ .fb svg{width:22px;height:22px;fill:#fff;flex:none}
+ .rassurance{display:flex;gap:11px;text-align:left;margin:22px 0 0;padding:0;list-style:none}
+ .rassurance li{color:#475569;font-size:14px;line-height:1.5}
+ .coche{flex:none;width:20px;height:20px;border-radius:50%;background:#e8f8ee;color:#16a34a;
+        font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+ .trait{height:1px;background:#eef2f7;margin:24px 0 16px}
+ .petit{color:#8896a8;font-size:12.5px;line-height:1.6;margin:0 0 10px}
+ .pied{color:#a3aebd;font-size:12px;margin:14px 0 0}
+ .pied a{color:#8896a8}
 </style></head><body><div class="carte">
-<h1>Mon Audit</h1>
-<p>Je dis pourquoi ta publicité ne te rapporte pas de commandes — et ce qu'il faut changer.</p>
-<a class="fb" href="{lien}">
-  <svg viewBox="0 0 24 24"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9
+<img class="logo" src="/icone-192.png" alt="Mon Audit" width="78" height="78">
+<span class="etiquette">100 % gratuit</span>
+<h1>Pourquoi ta pub ne vend pas</h1>
+<p class="accroche">Je lis ton <b>compte publicitaire</b> et les <b>paroles de tes clients</b>.
+Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.</p>
+<a class="fb" href="__LIEN__">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9
   3.7-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>
   Continuer avec Facebook
 </a>
-<div class="note"><b>Ce que tu accordes :</b> lire tes statistiques publicitaires, la liste de tes
-pages et les commentaires de tes publications. <b>Rien d'autre.</b> L'application ne publie rien, ne
-modifie aucune campagne et ne dépense pas un franc.</div>
-<p class="petit">Ton mot de passe Facebook ne passe jamais par ici : tu le tapes sur les pages de
-Facebook, et tu peux retirer l'accès quand tu veux.</p>
-<p class="petit">📱 Pour la garder sous la main : menu ⋮ de ton navigateur → « Ajouter à l'écran
-d'accueil ». Elle s'ouvrira comme une application, sans passer par un magasin.</p>
+<ul class="rassurance">
+ <li><span class="coche">✓</span><span>Rien n'est publié, rien n'est modifié chez toi, <b>pas un franc dépensé</b>.</span></li>
+ <li><span class="coche">✓</span><span>Ton <b>mot de passe</b> Facebook ne passe jamais par ici.</span></li>
+ <li><span class="coche">✓</span><span>Dès que tu accordes l'accès, tu peux le <b>retirer quand tu veux</b>.</span></li>
+</ul>
+<div class="trait"></div>
+<p class="petit">📱 Pour la garder sous la main : menu ⋮ de ton navigateur →
+« Ajouter à l'écran d'accueil ». Elle s'ouvrira comme une application.</p>
+<p class="pied">Tes données restent les tiennes — <a href="/confidentialite">confidentialité</a>.</p>
 </div></body></html>"""
 
 PAGE_CONFIDENTIALITE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Confidentialité — Mon Audit</title>
-<style>body{{font-family:system-ui,sans-serif;background:#0f1115;color:#eef1f6;margin:0;padding:26px;
-line-height:1.6}}h1{{font-size:21px}}h2{{font-size:16px;margin-top:26px}}li{{margin:7px 0;color:#c3c9d4}}
-p,li{{font-size:15px}}</style></head><body>
-<h1>Politique de confidentialité — Mon Audit</h1>
-<p>Mon Audit lit les données publicitaires et les conversations que le commerçant accepte
-explicitement de partager, dans le seul but de produire un rapport pour lui.</p>
-<ul>
-<li><b>Aucun mot de passe n'est jamais demandé.</b> L'accès passe par une autorisation révocable, que
-le commerçant peut retirer à tout moment (Facebook → Réglages → Applications et sites web).</li>
-<li><b>Le jeton d'accès n'est pas conservé</b> : il vit le temps de l'audit.</li>
-<li><b>Les conversations analysées</b> restent dans l'espace du commerçant et sont supprimées à sa
-demande.</li>
-<li><b>Aucune donnée n'est vendue</b>, ni partagée avec un autre client, ni utilisée pour entraîner un
-modèle.</li>
-<li><b>Rien n'est publié, modifié ou envoyé</b> en dehors des messages de service autorisés par
-WhatsApp.</li>
-</ul>
-<h2>Suppression de tes données</h2>
-<p>Écris <code>/efface</code> au bot : tout ce que tu lui as envoyé est supprimé immédiatement. Pour
-toute autre demande, contacte l'exploitant du service.</p>
-</body></html>"""
+<link rel="icon" type="image/png" href="/icone-192.png">
+<style>
+ :root{color-scheme:light}
+ body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:26px 18px;line-height:1.65}
+ .carte{max-width:560px;margin:0 auto;background:#fff;border:1px solid #e8edf4;border-radius:20px;
+        padding:30px 26px;box-shadow:0 18px 44px -22px rgba(15,23,42,.18)}
+ h1{font-size:23px;margin:0 0 4px} h2{font-size:16px;margin:24px 0 6px}
+ p,li{color:#475569;font-size:14.5px} a{color:#1877f2}
+ .date{color:#94a3b8;font-size:13px;margin:0 0 18px}
+</style></head><body><div class="carte">
+<h1>Confidentialité</h1>
+<p class="date">Mon Audit — dernière mise à jour : 10 octobre 2026</p>
+<h2>Ce que nous lisons</h2>
+<p>Uniquement ce que le client autorise lui-même en se connectant avec Facebook : ses statistiques
+publicitaires, la liste de ses pages et les commentaires de ses publications. Rien d'autre.</p>
+<h2>Ce que nous ne faisons jamais</h2>
+<p>Nous ne publions rien, ne modifions aucune campagne, ne dépensons aucun budget, et nous ne
+demandons jamais le mot de passe Facebook. L'accès passe par les pages officielles de Facebook et
+le client peut le retirer à tout moment.</p>
+<h2>Où vont les données</h2>
+<p>Le jeton d'accès vit le temps de l'audit et n'est pas conservé sur nos serveurs. Les rapports sont
+envoyés par Telegram à la personne qui a lancé l'audit. Aucune donnée n'est revendue ni transmise à
+un annonceur.</p>
+<h2>Effacement</h2>
+<p>La commande <b>/efface</b> du bot supprime les données enregistrées. Une demande peut aussi être
+adressée directement à l'éditeur du service.</p>
+</div></body></html>"""
 
 PAGE_RESULTAT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Mon Audit</title>
-<style>body{{font-family:system-ui,sans-serif;background:#0f1115;color:#eef1f6;margin:0;padding:26px;
-line-height:1.6}}h1{{font-size:20px}}.ok{{background:#12251b;border-left:4px solid #2ecc71;padding:14px;
-border-radius:8px}}pre{{white-space:pre-wrap;font-family:inherit;font-size:15px;color:#c3c9d4}}</style>
-</head><body><h1>Ton audit est prêt</h1>
+<link rel="icon" type="image/png" href="/icone-192.png">
+<style>
+ :root{color-scheme:light}
+ body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 18px;line-height:1.65}
+ .carte{max-width:620px;margin:0 auto;background:#fff;border:1px solid #e8edf4;border-radius:20px;
+        padding:28px 24px;box-shadow:0 18px 44px -22px rgba(15,23,42,.18)}
+ h1{font-size:22px;margin:0 0 14px}
+ .ok{background:#e8f8ee;border-left:4px solid #22c55e;padding:14px 16px;border-radius:10px;
+     color:#166534;font-size:15px}
+ pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14.5px;color:#475569;
+     background:#f7f9fc;border:1px solid #eef2f7;border-radius:12px;padding:16px;margin:16px 0 0}
+</style></head><body><div class="carte"><h1>Ton audit est prêt</h1>
 <div class="ok">Je te l'ai envoyé dans <b>Telegram</b>. Tu peux fermer cette page.</div>
-<pre>{apercu}</pre></body></html>"""
+<pre>__APERCU__</pre></div></body></html>"""
 
 
 def faire_audit(jeton, periode="last_30d"):
@@ -230,8 +284,12 @@ def faire_audit(jeton, periode="last_30d"):
     resultat = connexion.audit_complet(jeton, periode)
     etat = resultat["etat_du_jeton"]
     if not etat["suffisant_pour_auditer"]:
-        return None, (f"⛔ Je n'ai pas pu lire tes statistiques. Il manque le droit `ads_read`.\n\n"
-                      f"Reconnu : {etat['qui']}. Acccordés : {', '.join(etat['droits']) or 'aucun'}.")
+        # Message réécrit en français simple le 10/10/2026 : « Acccordés » (trois c) était une faute,
+        # et « le droit ads_read » ne veut rien dire pour un e-commerçant.
+        return None, ("⛔ Je n'ai pas pu lire tes statistiques : il manque l'autorisation de les "
+                      "consulter.\n\n"
+                      f"Compte reconnu : {etat['qui']}\n"
+                      f"Autorisations reçues : {', '.join(etat['droits']) or 'aucune'}")
     if not resultat["lignes"]:
         return None, ("⛔ Je ne vois aucune dépense sur 30 jours — soit ce compte n'a rien dépensé, "
                       "soit il n'est pas dans ceux que tu as autorisés.")
@@ -334,8 +392,12 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
 
             if analyse.path in ("/", "/index.html"):
                 etat = signer(parametres.get("chat", ""), secret_liens)
-                self._envoyer_html(PAGE_ACCUEIL.format(
-                    lien=url_de_connexion(app_id, adresse_publique, etat)))
+                # ⚠️ ON REMPLACE UN JETON, ON NE FORMATTE PAS. La page contient de vraies accolades
+                # CSS : un .format() dessus lèverait une KeyError (page cassée), et un .format() sans
+                # ${} laisserait « __LIEN__ » en clair — le bouton « Continuer avec Facebook » ne
+                # mènerait plus nulle part, exactement le défaut signalé par José.
+                self._envoyer_html(PAGE_ACCUEIL.replace(
+                    "__LIEN__", url_de_connexion(app_id, adresse_publique, etat)))
                 return
 
             if analyse.path == "/confidentialite":
@@ -364,7 +426,7 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                     self._envoyer_html(f"<h1>Je n'ai pas pu faire l'audit</h1><p>{erreur}</p>", 200)
                     return
                 envoye = _prevenir_telegram(chat_id, texte)
-                self._envoyer_html(PAGE_RESULTAT.format(
+                self._envoyer_html(PAGE_RESULTAT.replace(
                     apercu=(texte[:2200] if not envoye else "Rapport envoyé dans Telegram.")))
                 return
 

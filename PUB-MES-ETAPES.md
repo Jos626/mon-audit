@@ -1,7 +1,7 @@
-# Pubmeta — créer mes publicités : ce que José fait, et ce que fait la machine
+# Perform — créer mes publicités : ce que José fait, et ce que fait la machine
 
-**L'outil s'appelle Pubmeta** (renommé le 10/10/2026 — c'était « Pubmeta »).
-Signé : *Pubmeta — par José Ledanite*.
+**L'outil s'appelle Perform** (renommé le 10/10/2026 — c'était « Perform »).
+Signé : *Perform — par José Ledanite*.
 
 ---
 

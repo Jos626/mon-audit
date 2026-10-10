@@ -1,4 +1,4 @@
-# ÉTAT DU DÉPLOIEMENT — Pubmeta (10/10/2026, 01h)
+# ÉTAT DU DÉPLOIEMENT — Perform (10/10/2026, 01h)
 
 ## En ligne, vérifié depuis Internet
 
@@ -48,7 +48,7 @@ par Meta. Le seul refus portait sur le faux code — c'est exactement ce qu'on v
 ## APPLICATION INSTALLABLE (PWA) — faite et vérifiée le 10/10/2026
 
 Le client n'installe rien de compliqué : il ouvre l'adresse dans Chrome, menu ⋮ →
-« Ajouter à l'écran d'accueil ». L'icône « Pubmeta » apparaît, et s'ouvre en plein écran.
+« Ajouter à l'écran d'accueil ». L'icône « Perform » apparaît, et s'ouvre en plein écran.
 
 Ce qu'il faut pour que Chrome l'autorise (les trois, sinon pas d'installation) :
 1. HTTPS — Render s'en charge.

@@ -12,7 +12,7 @@ qu'à ouvrir au public : elle n'est pas un préalable au premier test.
 
 ## 1. Ce que l'application fait (description à coller)
 
-> **Pubmeta** aide les commerçants à comprendre pourquoi leur publicité Facebook ne leur rapporte pas
+> **Perform** aide les commerçants à comprendre pourquoi leur publicité Facebook ne leur rapporte pas
 > de commandes. Le commerçant se connecte avec Facebook, choisit le compte publicitaire qu'il veut
 > analyser, et reçoit un rapport : où part son budget, quelles annonces ne rapportent rien, quelles
 > annonces fonctionnent (et qu'il ne faut pas modifier), et pourquoi son compte n'arrive pas à mesurer
@@ -55,7 +55,7 @@ les objections. L'application ne démarre aucune conversation en dehors de la fe
 
 La vidéo doit montrer, sans coupe, les cinq étapes ci-dessous. Commentaire à dire en même temps :
 
-1. **L'écran d'entrée de l'application.** « Voici Pubmeta. Le commerçant appuie sur *Continuer avec
+1. **L'écran d'entrée de l'application.** « Voici Perform. Le commerçant appuie sur *Continuer avec
    Facebook*. »
 2. **Le dialogue Facebook Login.** « C'est Facebook qui demande les permissions, sur ses propres pages.
    L'application ne voit jamais le mot de passe. » → cliquer sur *Continuer*.
@@ -71,7 +71,7 @@ autre téléphone, et montrer le message reçu dans l'application.
 
 ## 4. Politique de confidentialité (version courte, à publier)
 
-> **Pubmeta** lit les données publicitaires et les conversations que le commerçant accepte
+> **Perform** lit les données publicitaires et les conversations que le commerçant accepte
 > explicitement de partager, dans le seul but de produire un rapport pour lui.
 >
 > · **Aucun mot de passe n'est jamais demandé.** L'accès passe par une autorisation révocable, que le

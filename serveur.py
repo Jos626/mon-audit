@@ -198,7 +198,7 @@ def verifier_etat(etat, secret, validite=3600):
 # ─────────────────────────────────────────────────────────── les pages
 PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pubmeta — pourquoi ta pub ne vend pas</title>
+<title>Perform — pourquoi ta pub ne vend pas</title>
 <link rel="manifest" href="/manifeste.json">
 <meta name="theme-color" content="#f4f6fb">
 <meta name="mobile-web-app-capable" content="yes">
@@ -246,7 +246,7 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .signature{color:#94a3b8;font-size:12.5px;margin:14px 0 0;letter-spacing:.2px}
  .signature b{color:#64748b;font-weight:600}
 </style></head><body><div class="carte">
-<img class="logo" src="/icone-512.png" alt="Pubmeta" width="132" height="132">
+<img class="logo" src="/icone-512.png" alt="Perform" width="132" height="132">
 <span class="etiquette">100 % gratuit</span>
 <h1>Pourquoi ta pub ne vend pas</h1>
 <p class="accroche">Je lis ton <b>compte publicitaire</b> et les <b>paroles de tes clients</b>.
@@ -274,11 +274,11 @@ Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.<
 <p class="petit">📱 Pour la garder sous la main : menu ⋮ de ton navigateur →
 « Ajouter à l'écran d'accueil ». Elle s'ouvrira comme une application.</p>
 <p class="pied">Tes données restent les tiennes — <a href="/confidentialite">confidentialité</a></p>
-<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+<p class="signature">Perform — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 PAGE_CONFIDENTIALITE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Confidentialité — Pubmeta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Confidentialité — Perform</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -291,7 +291,7 @@ PAGE_CONFIDENTIALITE = """<!doctype html><html lang="fr"><head><meta charset="ut
  .date{color:#94a3b8;font-size:13px;margin:0 0 18px}
 </style></head><body><div class="carte">
 <h1>Confidentialité</h1>
-<p class="date">Pubmeta — dernière mise à jour : 10 octobre 2026</p>
+<p class="date">Perform — dernière mise à jour : 10 octobre 2026</p>
 <h2>Ce que nous lisons</h2>
 <p>Uniquement ce que le client autorise lui-même en se connectant avec Facebook : ses statistiques
 publicitaires, la liste de ses pages et les commentaires de ses publications. Rien d'autre.</p>
@@ -310,11 +310,11 @@ aucune donnée personnelle à effacer : il n'en détient pas. Si tu veux arrête
 l'accès dans tes réglages Facebook — et tout s'arrête là.</p>
 <h2>Nous joindre</h2>
 <p>Pour toute question sur ces points, écris à l'éditeur du service, José Ledanite.</p>
-<p class="date" style="margin-top:22px">Pubmeta — par <b>José Ledanite</b></p>
+<p class="date" style="margin-top:22px">Perform — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 PAGE_RESULTAT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Pubmeta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Perform</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -345,7 +345,7 @@ PAGE_RESULTAT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 
 PAGE_PUB_BOUTON = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Créer mes publicités — Pubmeta</title>
+<title>Créer mes publicités — Perform</title>
 <meta name="theme-color" content="#f4f6fb">
 <link rel="apple-touch-icon" href="/icone-apple-180.png">
 <link rel="icon" type="image/png" href="/icone-192.png">
@@ -377,7 +377,7 @@ PAGE_PUB_BOUTON = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .signature{color:#94a3b8;font-size:12.5px;margin:14px 0 0}
  .signature b{color:#64748b;font-weight:600}
 </style></head><body><div class="carte">
-<img class="logo" src="/icone-512.png" alt="Pubmeta" width="132" height="132">
+<img class="logo" src="/icone-512.png" alt="Perform" width="132" height="132">
 <span class="etiquette">Publication automatique</span>
 <h1>Créer mes publicités</h1>
 <p class="accroche">Tu donnes <b>ton image</b>, <b>ton idée</b>, ton budget, ta durée et ta cible.
@@ -392,11 +392,11 @@ quand tu veux, dans tes réglages Facebook.</p>
 <div class="trait"></div>
 <p class="petit">Ce que tu autorises : gérer tes annonces, voir tes pages, publier au nom de ta page.
 Ce que tu vois ensuite : tes comptes publicitaires et tes pages, en liste — tu choisis, c'est tout.</p>
-<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+<p class="signature">Perform — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 PAGE_PUB_FIN = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>C'est prêt — Pubmeta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>C'est prêt — Perform</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -414,7 +414,7 @@ PAGE_PUB_FIN = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <div class="ok">__MESSAGE__</div>
 <p>Tu peux fermer cette page. La suite se passe dans <b>Telegram</b> : tu envoies ta photo, ton idée,
 ton budget, ta durée et ta cible — et la publicité part.</p>
-<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+<p class="signature">Perform — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 
@@ -455,7 +455,7 @@ def page_de_choix(identifiant, comptes, pages):
         manque = ("<p class=\"petit\">⚠️ Il manque un compte publicitaire ou une page : "
                   "vérifie que tu as bien un compte d'annonces, et qu'il est rattaché à ta page.</p>")
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Tu choisis — Pubmeta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Tu choisis — Perform</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{{color-scheme:light}}
@@ -483,12 +483,12 @@ def page_de_choix(identifiant, comptes, pages):
 <select id="page" name="page">{choix_pages}</select>
 <button>Terminer</button>
 </form>
-<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+<p class="signature">Perform — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 
 PAGE_CONTENU = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ta publicité — Pubmeta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ta publicité — Perform</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -526,7 +526,7 @@ __SOUCI__
 <div class="liste" id="liste">__PUBLICATIONS__</div>
 <button>Terminer</button>
 </form>
-<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+<p class="signature">Perform — par <b>José Ledanite</b></p>
 </div>
 <script>
 // Cocher une publication revient à choisir l'option « publication déjà en ligne » : deux gestes pour
@@ -692,13 +692,13 @@ def _prevenir_telegram(chat_id, texte):
 
 
 # ─────────────────────────────────── l'application installable (PWA, 10/10/2026)
-# CE QUE ÇA CHANGE POUR LE CLIENT, en une phrase : depuis son navigateur, deux appuis et « Pubmeta »
+# CE QUE ÇA CHANGE POUR LE CLIENT, en une phrase : depuis son navigateur, deux appuis et « Perform »
 # s'ajoute à son écran d'accueil — avec son icône, en plein écran, comme une application. Sans magasin,
 # sans rien à installer de compliqué, et sans frais. C'est ça, « l'appli installable » demandée.
 # Chrome réclame trois choses pour l'autoriser : une adresse HTTPS (Render ✓), un MANIFESTE et un
 # SERVICE WORKER. Les icônes sont de vrais PNG dessinés dans le projet (voir fabriquer-icones.py).
 MANIFESTE = """{
- "name": "Pubmeta", "short_name": "Pubmeta", "lang": "fr",
+ "name": "Perform", "short_name": "Perform", "lang": "fr",
  "start_url": "/", "scope": "/", "display": "standalone",
  "background_color": "#0f1115", "theme_color": "#0f1115",
  "description": "Dis pourquoi ta publicité ne te rapporte pas de commandes. Par José Ledanite.",
@@ -722,7 +722,7 @@ def _page_simple(titre, texte, code_entete="200"):
     """Une petite page claire pour les impasses : message court, jamais de page blanche."""
     return ('<!doctype html><html lang="fr"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            f'<title>{titre} — Pubmeta</title><style>'
+            f'<title>{titre} — Perform</title><style>'
             ':root{color-scheme:light}'
             'body{margin:0;background:linear-gradient(180deg,#f7f9fc 0%,#eef2f8 100%);color:#0f172a;'
             'font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;'
@@ -779,7 +779,7 @@ def _ranger(jeton, **etat):
 
 
 PAGE_ATTENTE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Analyse en cours — Pubmeta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Analyse en cours — Perform</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -829,7 +829,7 @@ PAGE_ATTENTE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 
 
 PAGE_RAPPORT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Pubmeta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Ton audit — Perform</title>
 <link rel="icon" type="image/png" href="/icone-192.png">
 <style>
  :root{color-scheme:light}
@@ -854,7 +854,7 @@ PAGE_RAPPORT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <div class="ok">Ton rapport est complet ci-dessous. Tu peux l'imprimer ou l'enregistrer en PDF.</div>
 <pre>__RAPPORT__</pre>
 <button class="bouton" onclick="window.print()">Imprimer / enregistrer en PDF</button>
-<p class="signature">Pubmeta — par <b>José Ledanite</b></p>
+<p class="signature">Perform — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 

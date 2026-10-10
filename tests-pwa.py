@@ -51,7 +51,7 @@ try:
 except Exception as e:
     m = {}
     controle("le manifeste est un JSON valide", False, str(e))
-controle("il porte le nom de l'application", m.get("name") == "Pubmeta")
+controle("il porte le nom de l'application", m.get("name") == "Perform")
 controle("il demande l'affichage en plein écran", m.get("display") == "standalone")
 controle("il commence à la racine", m.get("start_url") == "/")
 tailles = {i.get("sizes") for i in m.get("icons", [])}

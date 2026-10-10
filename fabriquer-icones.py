@@ -1,4 +1,4 @@
-"""Fabrique les icônes de l'application installable (Pubmeta).
+"""Fabrique les icônes de l'application installable (Perform).
 
 Un carré marine aux coins arrondis, un disque vert, une coche blanche : « ton audit est passé ».
 On les régénère avec : python3 fabriquer-icones.py

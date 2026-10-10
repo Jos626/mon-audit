@@ -47,7 +47,7 @@ def main():
 
     url = f"{ADRESSE}/reglages?secret=" + urllib.parse.quote(secret)
     try:
-        requete = urllib.request.Request(url, headers={"User-Agent": "Pubmeta/1.0"})
+        requete = urllib.request.Request(url, headers={"User-Agent": "Perform/1.0"})
         with urllib.request.urlopen(requete, timeout=75) as reponse:
             charge = json.load(reponse)
     except urllib.error.HTTPError as erreur:

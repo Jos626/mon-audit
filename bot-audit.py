@@ -224,7 +224,7 @@ CLAVIER = {"keyboard": [["/guide", "/audit"], ["/aide"]],
 
 
 def _bienvenue():
-    return ("👋 *Pubmeta* — je te dis pourquoi ta publicité ne rapporte pas.\n\n"
+    return ("👋 *Perform* — je te dis pourquoi ta publicité ne rapporte pas.\n\n"
             "Je lis ton compte publicitaire et les paroles de tes clients, puis je te rends **deux "
             "rapports** :\n\n"
             "1️⃣ **L'audit du compte** — où part ton argent, ce qui bloque, ce qu'il ne faut surtout "
@@ -374,7 +374,7 @@ def battre():
 def boucle():
     jeton = lire_jeton()
     moi = api(jeton, "getMe")["result"]
-    print(f"Pubmeta démarré : @{moi['username']} ({moi['id']})", flush=True)
+    print(f"Perform démarré : @{moi['username']} ({moi['id']})", flush=True)
     decalage = 0
     while True:
         try:

@@ -44,3 +44,31 @@ par Meta. Le seul refus portait sur le faux code — c'est exactement ce qu'on v
   écrire à quelqu'un qui ne l'a pas démarré).
 - Un vrai essai client : « Continuer avec Facebook » → l'audit doit se dérouler jusqu'au rapport.
 - Le service gratuit **s'endort** après 15 min : la première visite prend ~1 minute.
+
+## APPLICATION INSTALLABLE (PWA) — faite et vérifiée le 10/10/2026
+
+Le client n'installe rien de compliqué : il ouvre l'adresse dans Chrome, menu ⋮ →
+« Ajouter à l'écran d'accueil ». L'icône « Mon Audit » apparaît, et s'ouvre en plein écran.
+
+Ce qu'il faut pour que Chrome l'autorise (les trois, sinon pas d'installation) :
+1. HTTPS — Render s'en charge.
+2. Un **manifeste** (`/manifeste.json`) : nom, start_url, display standalone, icônes 192 et 512
+   (+ une « masquable », qu'Android redécoupe lui-même).
+3. Un **service worker** (`/sw.js`). ⚠️ Le nôtre ne met RIEN en cache, exprès : l'audit parle du
+   compte publicitaire du client, et une page resservie par un cache peut mentir.
+
+Icônes : de vrais PNG, dessinés par `fabriquer-icones.py` (PIL) et versionnés dans le projet —
+pas d'images récupérées ailleurs. Garde-fou : `tests-pwa.py` (15 contrôles).
+
+Aussi : le mode navigation privée de Chrome **refuse** l'installation. Il faut une fenêtre normale.
+
+## UN VRAI FICHIER .APK (pour plus tard, si José le veut)
+
+Possible sans Android Studio : **PWABuilder** (gratuit, Microsoft) transforme cette PWA en APK/AAB.
+Deux voies, deux coûts :
+- **APK téléchargé directement** → l'utilisateur doit autoriser « sources inconnues » (avertissement
+  Android + méfiance légitime).
+- **APK sur Google Play** → compte développeur 25 $ une fois, revue de Google, et une déclaration
+  « sécurité des données » (notre page /confidentialite la sert déjà).
+Conclusion honnête : la page installable donne 95 % du bénéfice pour 0 € et 0 friction. L'APK ne
+vaut le coup que si des clients refusent Telegram ET Chrome.

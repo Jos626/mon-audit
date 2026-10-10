@@ -175,6 +175,16 @@ def _convertir(d):
     messages = sum(v for k, v in actions.items() if "messaging" in k or "message" in k)
     resultats = achats or messages or float(d.get("clicks", 0))
     depense = float(d.get("spend", 0) or 0)
+    # Le ROAS (« combien chaque franc dépensé a rapporté ») est déjà demandé à Facebook et était
+    # simplement jeté. Si Meta ne le fournit pas, on laisse 0.0 et on n'en parle pas : c'est le
+    # rapport qui décidera de l'afficher ou non, jamais une valeur inventée.
+    roas = 0.0
+    for entree in (d.get("purchase_roas") or []):
+        try:
+            roas = float((entree or {}).get("value", 0) or 0)
+        except (TypeError, ValueError):
+            roas = 0.0
+        break
     return {
         "campagne": d.get("campaign_name", ""), "ensemble": d.get("adset_name", ""),
         "pub": d.get("ad_name", ""), "objectif": d.get("objective", ""),
@@ -184,7 +194,7 @@ def _convertir(d):
         "clics": float(d.get("clicks", 0) or 0), "ctr": float(d.get("ctr", 0) or 0),
         "cpm": float(d.get("cpm", 0) or 0), "cpc": float(d.get("cpc", 0) or 0),
         "resultats": resultats, "cout_resultat": round(depense / resultats, 2) if resultats else 0.0,
-        "achats": achats, "valeur_achats": 0.0,
+        "achats": achats, "valeur_achats": 0.0, "roas": roas,
     }
 
 
@@ -251,6 +261,66 @@ def _section_facultative(nom, fonction, *args, defaut=None, soucis=None):
         if soucis is not None:
             soucis.append(f"{nom} : indisponible")
         return defaut
+
+
+def fiche_pour_le_moteur(resultat):
+    """Traduit le résultat de l'audit en ce que le moteur attend (audit.auditer).
+
+    ⛔⛔ CETTE FONCTION EXISTE À CAUSE D'UN VRAI ÉCHEC DEVANT LE PROPRIÉTAIRE (10/10/2026).
+    José a connecté son compte : Facebook a tout autorisé, 4 comptes publicitaires et 8 lignes de
+    statistiques sont revenues… et le rapport a planté sur `KeyError: 'lignes'`. La clé était rangée
+    À L'INTÉRIEUR de « total », alors que le moteur la lit À LA RACINE (sept endroits : audit.py
+    lignes 86, 147, 201, 250, 283, 309, 372). Et la même faute dormait à l'identique dans
+    bot-audit.py : deux copies de la même construction fausse, jamais exercées sur de vraies données
+    — donc jamais prises en défaut jusqu'au premier client.
+
+    D'où cette fonction : UNE seule construction, appelée par les deux, et couverte par un test qui
+    travaille sur de fausses données (tests-audit-moteur.py).
+
+    Le « total » est bâti en additionnant TOUS les champs numériques des lignes, au lieu d'une liste
+    figée : si Meta ajoute ou renomme un champ, le total suit, au lieu de lever une KeyError.
+    """
+    lignes = resultat.get("lignes") or []
+
+    # ⚠️ ON PART DE ZÉRO POUR LES CHAMPS CONNUS, ET C'EST INDISPENSABLE : deuxieme bug trouvé par le
+    # test du 10/10/2026. Un compte SANS AUCUNE LIGNE (le cas normal d'un client qui débute) donnait
+    # un « total » vide, et le moteur tombait sur `KeyError: 'depense'` — il lit ce champ sans
+    # précaution, ce qui est légitime de sa part : c'est à l'assembleur de garantir la forme.
+    ADDITIFS = ("depense", "impressions", "portee", "clics", "resultats", "achats", "valeur_achats")
+    total = {champ: 0.0 for champ in ADDITIFS}
+
+    for ligne in lignes:
+        for cle, valeur in (ligne or {}).items():
+            if isinstance(valeur, (int, float)) and not isinstance(valeur, bool):
+                if cle in ADDITIFS:
+                    total[cle] = round(total.get(cle, 0.0) + valeur, 2)
+                else:
+                    total.setdefault(cle, 0.0)
+
+    # ⛔⛔ ON N'ADDITIONNE JAMAIS UNE MOYENNE. Le CTR, le CPM, le CPC et la fréquence sont des
+    # RAPPORTS : 1,5 % + 1,8 % = 3,3 % ne veut rien dire, et pourtant le code le faisait. Un rapport
+    # faux donne un conseil faux — le pire des mensonges, parce qu'il est silencieux. On les
+    # RECALCULE à partir des sommes, avec une protection contre la division par zéro.
+    def _rapport(haut, bas, facteur=1.0):
+        return round(total[haut] / total[bas] * facteur, 2) if total.get(bas) else 0.0
+
+    total["ctr"] = _rapport("clics", "impressions", 100.0)
+    total["cpc"] = _rapport("depense", "clics")
+    total["cpm"] = _rapport("depense", "impressions", 1000.0)
+    total["frequence"] = _rapport("impressions", "portee")
+    total["cout_resultat"] = _rapport("depense", "resultats")
+    # le retour sur dépense est une moyenne PONDÉRÉE par l'argent engagé, jamais une somme
+    engage = 0.0
+    pondere = 0.0
+    for ligne in lignes:
+        depense_ligne = float((ligne or {}).get("depense", 0) or 0)
+        engage += depense_ligne
+        pondere += float((ligne or {}).get("roas", 0) or 0) * depense_ligne
+    total["roas"] = round(pondere / engage, 2) if engage else 0.0
+    return {"total": total,
+            "lignes": lignes,                     # ⚠️ À LA RACINE, PAS DANS « total »
+            "absentes": list(resultat.get("absentes") or []),
+            "souhaitees_absentes": list(resultat.get("souhaitees_absentes") or [])}
 
 
 def audit_complet(jeton, periode="last_30d", page_id=None):

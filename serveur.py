@@ -305,10 +305,10 @@ def faire_audit(jeton, periode="last_30d"):
     if not resultat["lignes"]:
         return None, ("⛔ Je ne vois aucune dépense sur 30 jours — soit ce compte n'a rien dépensé, "
                       "soit il n'est pas dans ceux que tu as autorisés.")
-    pseudo = {"total": {k: sum(l.get(k, 0) for l in resultat["lignes"])
-                        for k in ("depense", "impressions", "clics", "resultats", "achats",
-                                  "valeur_achats")} | {"lignes": len(resultat["lignes"])},
-              "absentes": [], "souhaitees_absentes": []}
+    # ⛔ ON PASSE PAR LA CONSTRUCTION PARTAGÉE (connexion.fiche_pour_le_moteur). Recopier cette
+    # construction ici est exactement ce qui a produit le bug du 10/10/2026 : deux copies, la même
+    # faute, et un rapport qui plante chez le client.
+    pseudo = connexion.fiche_pour_le_moteur(resultat)
     noms = ", ".join(c.get("name", "?") for c in resultat["comptes"][:3])
     return (rapport.construire(audit.auditer(pseudo, {}), noms or "ton compte publicitaire")
             + "\n\n_Source : ton compte publicitaire, lu en direct (30 derniers jours). "

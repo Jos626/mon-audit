@@ -35,6 +35,8 @@
   ✓ le centre d'intérêt est traduit pour Meta
   ✓ une deuxième cible est lue correctement
   ✓ sans âge, on prend la fourchette par défaut
+  ✓ « hommes ET femmes » veut dire TOUT LE MONDE (pas la moitié)
+  ✓ deux villes sont lues ensemble
 
 === 7. Les montants envoyés à Meta dépendent de la DEVISE DU COMPTE ===
   ✓ en franc CFA (pas de centime) : 1 500 reste 1 500
@@ -53,9 +55,5 @@
 
 === 10. Les textes écrits par le modèle sont CONTRÔLÉS ===
   ✓ un texte trop long est signalé (le modèle doit tenir dans les limites de Meta)
-
-=== 11. RÉSEAU : le modèle gratuit écrit vraiment la publicité ===
-  ✓ les textes viennent du modèle (pas des gabarits)
-  ✓ l'accroche ne reprend pas l'idée mot pour mot
 
 === RÉSULTAT : 37 réussite(s), 0 échec(s), 0 non testé(s) (réseau) ===

@@ -102,6 +102,11 @@ verifie("une deuxième cible est lue correctement",
 cible3 = pub.lire_cible("toute la Côte d'Ivoire")
 verifie("sans âge, on prend la fourchette par défaut",
         (cible3["age_min"], cible3["age_max"]) == (18, 45), str(cible3))
+cible4 = pub.lire_cible("hommes et femmes 20-45 ans Abidjan et Bouaké")
+verifie("« hommes ET femmes » veut dire TOUT LE MONDE (pas la moitié)",
+        cible4["sexe"] == "tous", cible4["sexe"])
+verifie("deux villes sont lues ensemble", sorted(cible4["villes"]) == ["Abidjan", "Bouaké"],
+        str(cible4["villes"]))
 
 print("\n=== 7. Les montants envoyés à Meta dépendent de la DEVISE DU COMPTE ===")
 publicite = pub.fabriquer("promo", VISUEL, 15000, 10, "18-45 ans Abidjan", "https://exemple.ci",

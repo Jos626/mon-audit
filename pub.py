@@ -118,9 +118,15 @@ def lire_cible(texte, defaut_age=(18, 45)):
             cible["age_min"] = int(seul.group(1))
             cible["age_max"] = 65
 
-    if any(m in bas for m in ("homme", "garçon", "masculin")):
+    # ⚠️ « hommes ET femmes » veut dire TOUT LE MONDE. Tester « homme » en premier prenait la moitié
+    # de l'audience sans rien dire — vu sur une vraie démo le 10/10/2026.
+    dit_hommes = any(m in bas for m in ("homme", "garçon", "masculin", "h/f"))
+    dit_femmes = any(m in bas for m in ("femme", "fille", "féminin"))
+    if dit_hommes and dit_femmes:
+        cible["sexe"] = "tous"
+    elif dit_hommes:
         cible["sexe"] = "hommes"
-    elif any(m in bas for m in ("femme", "fille", "féminin")):
+    elif dit_femmes:
         cible["sexe"] = "femmes"
 
     for ville in VILLES_CI:

@@ -187,12 +187,16 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .carte{width:100%;max-width:440px;background:#fff;border:1px solid #e8edf4;border-radius:22px;
         padding:34px 26px 26px;text-align:center;
         box-shadow:0 1px 2px rgba(15,23,42,.04),0 18px 44px -18px rgba(15,23,42,.18)}
- .logo{width:78px;height:78px;border-radius:20px;display:block;margin:0 auto 18px;
-       box-shadow:0 10px 24px -10px rgba(15,23,42,.45)}
+ /* ICÔNE AGRANDIE LE 10/10/2026 — José, capture à l'appui : « Pour l'icône, trop petit.
+    Il faut que ce soit plus grand. » 78 px était timide sur un téléphone : c'est le premier
+    élément que l'œil rencontre, il porte la promesse. 132 px, arrondi proportionnel, ombre
+    plus profonde pour qu'elle se détache du fond clair. */
+ .logo{width:132px;height:132px;border-radius:34px;display:block;margin:6px auto 20px;
+       box-shadow:0 18px 38px -16px rgba(15,23,42,.5)}
  .etiquette{display:inline-block;background:#e8f8ee;color:#15803d;font-size:12.5px;font-weight:700;
             padding:5px 12px;border-radius:999px;margin:0 0 14px;letter-spacing:.2px}
- h1{font-size:27px;line-height:1.2;margin:0 0 10px;letter-spacing:-.5px}
- .accroche{color:#475569;font-size:16px;line-height:1.6;margin:0 0 26px}
+ h1{font-size:30px;line-height:1.18;margin:0 0 12px;letter-spacing:-.6px}
+ .accroche{color:#475569;font-size:16.5px;line-height:1.62;margin:0 0 28px}
  .accroche b{color:#0f172a}
  .fb{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;
      background:#1877f2;color:#fff;text-decoration:none;font-weight:700;font-size:17px;
@@ -200,10 +204,6 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
      transition:transform .12s ease,box-shadow .12s ease}
  .fb:active{transform:translateY(1px);box-shadow:0 6px 14px -8px rgba(24,119,242,.9)}
  .fb svg{width:22px;height:22px;fill:#fff;flex:none}
- .rassurance{display:flex;gap:11px;text-align:left;margin:22px 0 0;padding:0;list-style:none}
- .rassurance li{color:#475569;font-size:14px;line-height:1.5}
- .coche{flex:none;width:20px;height:20px;border-radius:50%;background:#e8f8ee;color:#16a34a;
-        font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
  .trait{height:1px;background:#eef2f7;margin:24px 0 16px}
  .petit{color:#8896a8;font-size:12.5px;line-height:1.6;margin:0 0 10px}
  .pied{color:#a3aebd;font-size:12px;margin:14px 0 0}
@@ -211,7 +211,7 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .signature{color:#94a3b8;font-size:12.5px;margin:14px 0 0;letter-spacing:.2px}
  .signature b{color:#64748b;font-weight:600}
 </style></head><body><div class="carte">
-<img class="logo" src="/icone-192.png" alt="Mon Audit" width="78" height="78">
+<img class="logo" src="/icone-512.png" alt="Mon Audit" width="132" height="132">
 <span class="etiquette">100 % gratuit</span>
 <h1>Pourquoi ta pub ne vend pas</h1>
 <p class="accroche">Je lis ton <b>compte publicitaire</b> et les <b>paroles de tes clients</b>.
@@ -221,11 +221,8 @@ Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.<
   3.7-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>
   Continuer avec Facebook
 </a>
-<ul class="rassurance">
- <li><span class="coche">✓</span><span>Rien n'est publié, rien n'est modifié chez toi, <b>pas un franc dépensé</b>.</span></li>
- <li><span class="coche">✓</span><span>Ton <b>mot de passe</b> Facebook ne passe jamais par ici.</span></li>
- <li><span class="coche">✓</span><span>Dès que tu accordes l'accès, tu peux le <b>retirer quand tu veux</b>.</span></li>
-</ul>
+<!-- ⛔ LE BLOC DES TROIS POINTS A ÉTÉ RETIRÉ LE 10/10/2026, SUR DEMANDE DE JOSÉ
+ (capture annotée : « Supprime cette partie »). On ne le réintroduit pas sans son accord. -->
 <div class="trait"></div>
 <p class="petit">📱 Pour la garder sous la main : menu ⋮ de ton navigateur →
 « Ajouter à l'écran d'accueil ». Elle s'ouvrira comme une application.</p>

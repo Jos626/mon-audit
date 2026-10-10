@@ -28,6 +28,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -223,12 +224,41 @@ def rediger_avec_modele(idee, cible, budget_jour, duree, support):
         '"appel" (une seule expression parmi : En savoir plus, Acheter, S\'inscrire, Nous contacter). '
         "N'invente aucun chiffre, aucun prix, aucune garantie."
     )
-    corps = json.dumps({
+    corps_base = {
         "model": MODELE_GROQ,
         "messages": [{"role": "user", "content": demande}],
         "max_tokens": 700,
-        "response_format": {"type": "json_object"},
-    }).encode()
+    }
+    # DEUX ESSAIS : le modeur rend parfois un JSON invalide avec la contrainte stricte (« failed to
+    # validate JSON »). Le second essai, sans la contrainte, passe presque toujours — et sans lui on
+    # retombait sur les gabarits une fois sur deux, pour rien.
+    erreur_vue = None
+    for essai, avec_contrainte in enumerate((True, False)):
+        corps = dict(corps_base)
+        if avec_contrainte:
+            corps["response_format"] = {"type": "json_object"}
+        try:
+            charge = _poster_groq(json.dumps(corps).encode(), cle)
+            texte = charge["choices"][0]["message"]["content"]
+            textes = json.loads(texte[texte.find("{"):texte.rfind("}") + 1])
+        except Exception as erreur:  # noqa: BLE001 — on garde la trace, JAMAIS un silence
+            erreur_vue = erreur
+            continue
+        if textes.get("accroche") and textes.get("principal"):
+            return textes
+    # Les deux essais ont échoué : on le CONSIGNE (une panne silencieuse ferait écrire de pâles
+    # gabarits pendant des semaines sans que personne ne comprenne pourquoi).
+    try:
+        with open(os.path.join(ICI, "pub-journal.log"), "a", encoding="utf-8") as journal:
+            journal.write(f"\n--- {time.strftime('%d/%m %H:%M:%S')} : le modèle n'a pas répondu "
+                          f"après deux essais ---\n{erreur_vue}\n\n"
+                          f"Requête : {json.dumps(corps_base, ensure_ascii=False)[:600]}\n")
+    except OSError:
+        pass
+    return None
+
+
+def _poster_groq(corps, cle):
     requete = urllib.request.Request(
         "https://api.groq.com/openai/v1/chat/completions", data=corps,
         headers={"Authorization": f"Bearer {cle}", "Content-Type": "application/json",
@@ -238,32 +268,8 @@ def rediger_avec_modele(idee, cible, budget_jour, duree, support):
                                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 "
                                 "Mobile Safari/537.36"),
                  "Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(requete, timeout=45) as reponse:
-            charge = json.load(reponse)
-        texte = charge["choices"][0]["message"]["content"]
-        textes = json.loads(texte[texte.find("{"):texte.rfind("}") + 1])
-    except Exception as erreur:  # noqa: BLE001 — on garde la trace, JAMAIS un silence
-        # ⛔ Une erreur avalée en silence fait écrire de pâles gabarits pendant des semaines sans que
-        # personne ne comprenne pourquoi. On consigne la cause, et l'appelant peut la lire.
-        detail = ""
-        if isinstance(erreur, urllib.error.HTTPError):
-            try:
-                detail = "\nRéponse du serveur : " + erreur.read().decode("utf-8", "replace")[:800]
-            except Exception:  # noqa: BLE001
-                detail = ""
-        try:
-            with open(os.path.join(ICI, "pub-journal.log"), "a", encoding="utf-8") as journal:
-                import time as _temps
-                journal.write(f"\n--- {_temps.strftime('%d/%m %H:%M:%S')} : "
-                              f"le modèle n'a pas répondu ---\n{erreur}{detail}\n\n"
-                              f"Requête envoyée : {corps.decode('utf-8', 'replace')[:700]}\n")
-        except OSError:
-            pass
-        return None
-    if not textes.get("accroche") or not textes.get("principal"):
-        return None
-    return textes
+    with urllib.request.urlopen(requete, timeout=45) as reponse:
+        return json.load(reponse)
 
 
 def textes_de_repli(idee):

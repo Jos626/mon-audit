@@ -1,7 +1,0 @@
-
---- 10/10 11:44:48 : le modèle n'a pas répondu ---
-HTTP Error 400: Bad Request
-Réponse du serveur : {"error":{"message":"Failed to validate JSON. Please adjust your prompt. See 'failed_generation' for more details.","type":"invalid_request_error","code":"json_validate_failed","failed_generation":""}}
-
-
-Requête envoyée : {"model": "openai/gpt-oss-120b", "messages": [{"role": "user", "content": "Tu es r\u00e9dacteur publicitaire pour l'Afrique de l'Ouest francophone. \u00c9cris une publicit\u00e9 Facebook en fran\u00e7ais simple, pour : une formation pour apprendre a creer des agents IA.\nCible : 20-45 ans, tous, Abidjan, Bouake. Support : image.\nR\u00e9ponds STRICTEMENT en JSON, avec ces cl\u00e9s : \"accroche\" (8 mots maximum, percutante), \"principal\" (2 \u00e0 3 phrases, tutoiement, un b\u00e9n\u00e9fice concret, pas de promesse de gain), \"titre\" (6 mots maximum), \"description\" (10 mots maximum), \"appel\" (une seule expression parmi : En savoir plus, Acheter, S'inscrire, Nous contacter). N'invente

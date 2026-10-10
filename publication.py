@@ -92,13 +92,22 @@ def appel(chemin, parametres, reglages, methode="GET"):
         with urllib.request.urlopen(requete, timeout=60) as reponse:
             return json.load(reponse)
     except urllib.error.HTTPError as erreur:
+        code = sous_code = None
         try:
             corps = json.loads(erreur.read().decode("utf-8", "replace"))
-            message = corps.get("error", {}).get("message", "")
-            code = corps.get("error", {}).get("code")
+            detail = corps.get("error", {}) or {}
+            message = detail.get("message", "")
+            code = detail.get("code")
+            # ⚠️ LE MESSAGE GÉNÉRIQUE NE SUFFIT PAS. « Invalid parameter » ne dit pas QUEL paramètre :
+            # Meta range la précision dans error_user_msg / error_data. Sans ça, on cherche à
+            # l'aveugle — vécu le 10/10/2026 sur la création d'ensemble.
+            sous_code = detail.get("error_subcode")
+            precis = detail.get("error_user_msg") or ""
+            donnees = detail.get("error_data") or ""
+            message = " ".join(str(x) for x in (message, precis, donnees) if x)
         except Exception:  # noqa: BLE001
-            message, code = "", None
-        consigner(f"ERREUR Meta sur {chemin} : code={code} {message}")
+            message, code, sous_code = "", None, None
+        consigner(f"ERREUR Meta sur {chemin} : code={code} sous-code={sous_code} {message}")
         if code == 190:
             raise RuntimeError("Le jeton Meta a expiré ou a été révoqué. Il faut renouveler "
                                "l'autorisation (un jeton ne dure pas éternellement).") from erreur
@@ -159,25 +168,34 @@ def construire_objectif(reglages, publicite):
 
 
 def ciblage_meta(publicite, reglages):
-    """Traduit la cible lue dans le texte en ce que Meta attend."""
+    """Traduit la cible lue dans le texte en ce que Meta attend.
+
+    ⛔ PIÈGE QUI BLOQUE TOUT (vécu le 10/10/2026) : cibler le PAYS et la VILLE du même pays ensemble
+    fait échouer la création — « Supprimez un lieu en conflit pour continuer », blame_field targeting.
+    Abidjan est en Côte d'Ivoire : inutile de demander les deux. Une ville trouvée remplace le pays ;
+    le pays ne sert que de repli quand aucune ville n'a été reconnue.
+    """
     cible = publicite["cible"]
-    geo = {"countries": cible.get("pays") or ["CI"]}
-    if cible.get("villes"):
-        villes = []
-        for nom_ville in cible["villes"]:
-            trouve = appel("search", {"type": "adgeolocation", "location_types": '["city"]',
-                                      "q": nom_ville, "country_code": (cible.get("pays") or ["CI"])[0]},
-                           reglages)
-            for resultat in trouve.get("data", [])[:1]:
-                villes.append({"key": resultat["key"], "radius": 25, "distance_unit": "kilometer"})
-        if villes:
-            geo["cities"] = villes
+    pays = cible.get("pays") or ["CI"]
+    villes = []
+    for nom_ville in (cible.get("villes") or []):
+        trouve = appel("search", {"type": "adgeolocation", "location_types": '["city"]',
+                                  "q": nom_ville, "country_code": pays[0]}, reglages)
+        for resultat in trouve.get("data", [])[:1]:
+            villes.append({"key": resultat["key"], "radius": 25, "distance_unit": "kilometer"})
+    geo = {"cities": villes} if villes else {"countries": pays}
     ciblage = {"geo_locations": geo, "age_min": max(18, cible.get("age_min", 18)),
                "age_max": min(65, cible.get("age_max", 45))}
     if cible.get("sexe") == "hommes":
         ciblage["genders"] = [1]
     elif cible.get("sexe") == "femmes":
         ciblage["genders"] = [2]
+    # ⚠️ ADVANTAGE_AUDIENCE, OBLIGATOIRE (code 100, vécu le 10/10/2026) : Meta refuse de créer un
+    # ensemble sans savoir si on le laisse ÉLARGIR la cible tout seul. On met 0 (désactivé) : quand
+    # José demande « femmes 25-45 ans à Abidjan », la publicité doit viser ÇA — pas « à peu près
+    # ça ». C'est aussi ce qui rend les mesures lisibles : une cible qui bouge seule rend le
+    # journal d'apprentissage inexploitable.
+    ciblage["targeting_automation"] = {"advantage_audience": 0}
     if cible.get("langues"):
         ciblage["locales"] = [6]        # 6 = français, la seule langue qu'on cible ici
     return ciblage
@@ -185,6 +203,12 @@ def ciblage_meta(publicite, reglages):
 
 def creer_et_verifier(chemin, parametres, reglages, quoi, champ_liste=None, liste_de=None):
     """Crée un objet chez Meta ET VÉRIFIE qu'il existe vraiment.
+
+    ⛔⛔ LA FAUTE QUI A COÛTÉ (vécue le 10/10/2026) : `chemin` DOIT être une SOUS-LISTE du compte
+    (« act_…/campaigns »), JAMAIS le compte lui-même. En passant « act_… » seul, le POST ne crée rien :
+    il MODIFIE LE COMPTE — le nom de la campagne de test a remplacé le nom du compte de José
+    (« Merveilles »), et Meta répondait « {"success": true} », donc le code croyait avoir réussi.
+    D'où le garde-fou ci-dessous : mieux vaut une erreur bruyante qu'un compte renommé en silence.
 
     ⛔⛔ POURQUOI CE N'EST PAS DE LA PARANOÏA (vécu le 10/10/2026) : sur le même appel, Meta rend
     tantôt « {"id": "…"} », tantôt « {"success": true} » — et dans ce second cas **RIEN n'est créé**,
@@ -194,7 +218,18 @@ def creer_et_verifier(chemin, parametres, reglages, quoi, champ_liste=None, list
     On refait donc l'appel UNE fois, puis on va CHERCHER l'objet par son nom. Si on ne le trouve pas,
     on s'arrête et on le dit — jamais de succès inventé.
     """
-    noms = {"campagne": "campaigns", "ensemble": "adsets", "annonce": "ads"}
+    noms = {"campagne": "campaigns", "ensemble": "adsets", "annonce": "ads", "créatif": "adcreatives"}
+
+    # ⛔ GARDE-FOU CONTRE LA FAUTE QUI A RENOMMÉ LE COMPTE DE JOSÉ. Si `chemin` ne désigne pas une
+    # sous-liste, on s'arrête AVANT d'envoyer quoi que ce soit : un POST sur « act_… » ne crée rien,
+    # il modifie le compte. Mieux vaut une erreur bruyante que cinq secondes de honte silencieuse.
+    if not any(chemin.rstrip("/").endswith("/" + suffixe)
+               for suffixe in ("campaigns", "adsets", "ads", "adcreatives")):
+        raise RuntimeError(
+            f"Refusé : « {chemin} » ne désigne pas une sous-liste du compte. Une création doit viser "
+            "…/campaigns, …/adsets, …/ads ou …/adcreatives — viser le compte lui-même le MODIFIE au "
+            "lieu de créer (c'est ce qui a renommé le compte en douce le 10/10/2026).")
+
     for tentative in (1, 2):
         reponse = appel(chemin, parametres, reglages, "POST")
         identifiant = reponse.get("id") if isinstance(reponse, dict) else None
@@ -263,7 +298,7 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
         nom_image = televerser_image(publicite["visuel"]["chemin"], reglages)
         journal_des_etapes.append(f"visuel téléversé (empreinte {nom_image[:12]}…)")
 
-    campagne_id = creer_et_verifier(reglages["compte_publicitaire"], {
+    campagne_id = creer_et_verifier(f"{reglages['compte_publicitaire']}/campaigns", {
         "name": f"{nom} — {time.strftime('%d/%m %H:%M')}",
         "objective": objectif,
         "status": statut,
@@ -284,15 +319,18 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
         "billing_event": facturation,
         "optimization_goal": optimisation,
         "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
-        "lifetime_budget": total_api,
+        # ⛔ UN SEUL BUDGET À LA FOIS (vécu le 10/10/2026) : envoyer daily_budget ET lifetime_budget
+        # fait répondre Meta « Veuillez spécifier un budget quotidien ou un budget global » — il ne
+        # sait plus lequel appliquer et refuse la création. José pense « tant par jour pendant tant
+        # de jours » : c'est donc le budget QUOTIDIEN qu'on envoie, la durée tenant dans end_time.
         "daily_budget": budget_api,
         "start_time": maintenant,
         "end_time": fin,
         "targeting": json.dumps(ciblage_meta(publicite, reglages), ensure_ascii=False),
         "status": statut,
     }
-    ensemble_id = creer_et_verifier(reglages["compte_publicitaire"], reglages_ensemble, reglages,
-                                    "ensemble", liste_de=True)
+    ensemble_id = creer_et_verifier(f"{reglages['compte_publicitaire']}/adsets", reglages_ensemble,
+                                    reglages, "ensemble", liste_de=True)
     journal_des_etapes.append(f"ensemble créé : {ensemble_id}")
 
     lien = publicite["destination"]
@@ -313,12 +351,12 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
             "title": publicite["textes"]["titre"], "image_url": publicite["textes"].get("miniature"),
             "call_to_action": {"type": "LEARN_MORE", "value": {"link": lien}}}}
     creation_id = creer_et_verifier(
-        reglages["compte_publicitaire"],
+        f"{reglages['compte_publicitaire']}/adcreatives",
         {"name": f"Pub — {nom}", "object_story_spec": json.dumps(histoire, ensure_ascii=False)},
-        reglages, "annonce")
+        reglages, "créatif")
     journal_des_etapes.append(f"annonce créée (creative) : {creation_id}")
 
-    annonce_id = creer_et_verifier(reglages["compte_publicitaire"], {
+    annonce_id = creer_et_verifier(f"{reglages['compte_publicitaire']}/ads", {
         "name": f"Annonce — {nom}", "adset_id": ensemble_id,
         "creative": json.dumps({"creative_id": creation_id}),
         "status": statut}, reglages, "annonce", liste_de=True)

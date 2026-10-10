@@ -1,0 +1,46 @@
+{
+  "idee": "un VPN pour jouer à eFootball sans décalage",
+  "visuel": {
+    "type": "image",
+    "chemin": "exemples/visuel-test.jpg",
+    "poids": 34010,
+    "erreur": null
+  },
+  "cible": {
+    "pays": [
+      "CI"
+    ],
+    "villes": [
+      "Abidjan"
+    ],
+    "age_min": 18,
+    "age_max": 35,
+    "sexe": "hommes",
+    "langues": [
+      "fr"
+    ],
+    "interets": [
+      "eFootball"
+    ],
+    "texte_original": "hommes 18-35 ans Abidjan, interesses par efootball",
+    "non_compris": []
+  },
+  "destination": "https://exemple.ci/efootball",
+  "budget": {
+    "total": 15000,
+    "journalier": 1500,
+    "devise": "XOF"
+  },
+  "duree": {
+    "jours": 10
+  },
+  "textes": {
+    "accroche": "Joue à eFootball sans lag, partout!",
+    "principal": "Connecte-toi à nos serveurs proches d'Abidjan et profite d'une connexion stable. Ton gameplay reste fluide même pendant les matchs les plus intenses.",
+    "titre": "VPN eFootball ultra‑rapide",
+    "description": "Connexion stable, latence réduite, jeu sans interruption.",
+    "appel": "En savoir plus"
+  },
+  "textes_par_modele": true,
+  "bloquants": []
+}

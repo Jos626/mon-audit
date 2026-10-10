@@ -208,6 +208,8 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .petit{color:#8896a8;font-size:12.5px;line-height:1.6;margin:0 0 10px}
  .pied{color:#a3aebd;font-size:12px;margin:14px 0 0}
  .pied a{color:#8896a8}
+ .signature{color:#94a3b8;font-size:12.5px;margin:14px 0 0;letter-spacing:.2px}
+ .signature b{color:#64748b;font-weight:600}
 </style></head><body><div class="carte">
 <img class="logo" src="/icone-192.png" alt="Mon Audit" width="78" height="78">
 <span class="etiquette">100 % gratuit</span>
@@ -227,7 +229,8 @@ Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.<
 <div class="trait"></div>
 <p class="petit">📱 Pour la garder sous la main : menu ⋮ de ton navigateur →
 « Ajouter à l'écran d'accueil ». Elle s'ouvrira comme une application.</p>
-<p class="pied">Tes données restent les tiennes — <a href="/confidentialite">confidentialité</a>.</p>
+<p class="pied">Tes données restent les tiennes — <a href="/confidentialite">confidentialité</a></p>
+<p class="signature">Mon Audit — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 PAGE_CONFIDENTIALITE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
@@ -262,7 +265,8 @@ jamais écrit sur disque, jamais conservé, jamais transmis à un tiers ni reven
 aucune donnée personnelle à effacer : il n'en détient pas. Si tu veux arrêter, il suffit de retirer
 l'accès dans tes réglages Facebook — et tout s'arrête là.</p>
 <h2>Nous joindre</h2>
-<p>Pour toute question sur ces points, écris à l'éditeur du service : José Ledanite.</p>
+<p>Pour toute question sur ces points, écris à l'éditeur du service, José Ledanite.</p>
+<p class="date" style="margin-top:22px">Mon Audit — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 PAGE_RESULTAT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
@@ -337,7 +341,7 @@ MANIFESTE = """{
  "name": "Mon Audit", "short_name": "Mon Audit", "lang": "fr",
  "start_url": "/", "scope": "/", "display": "standalone",
  "background_color": "#0f1115", "theme_color": "#0f1115",
- "description": "Dis pourquoi ta publicité ne te rapporte pas de commandes.",
+ "description": "Dis pourquoi ta publicité ne te rapporte pas de commandes. Par José Ledanite.",
  "icons": [
   {"src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
   {"src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
@@ -477,6 +481,8 @@ PAGE_RAPPORT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .sous{color:#64748b;font-size:14px;margin:0 0 18px}
  .ok{background:#e8f8ee;border-left:4px solid #22c55e;padding:12px 14px;border-radius:10px;
      color:#166534;font-size:14px;margin:0 0 18px}
+ .signature{color:#94a3b8;font-size:12.5px;margin:16px 0 0}
+ .signature b{color:#64748b;font-weight:600}
  pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14.5px;color:#334155;
      background:#f7f9fc;border:1px solid #eef2f7;border-radius:12px;padding:16px;margin:0}
  .bouton{display:inline-block;margin:18px 0 0;background:#0f172a;color:#fff;text-decoration:none;
@@ -488,6 +494,7 @@ PAGE_RAPPORT = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <div class="ok">Ton rapport est complet ci-dessous. Tu peux l'imprimer ou l'enregistrer en PDF.</div>
 <pre>__RAPPORT__</pre>
 <button class="bouton" onclick="window.print()">Imprimer / enregistrer en PDF</button>
+<p class="signature">Mon Audit — par <b>José Ledanite</b></p>
 </div></body></html>"""
 
 

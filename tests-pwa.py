@@ -84,6 +84,14 @@ controle("…et il demande les bonnes permissions, sans la fautive",
          bool(_lien and "scope=ads_read" in _lien.group(1) and "read_insights" not in _lien.group(1)))
 controle("la page a une icône pour iPhone", "apple-touch-icon" in page)
 controle("la page dit au client comment l'installer", "Ajouter à l'écran" in page)
+# José, le 10/10/2026 : « Pour l'application signe José Ledanite. » La signature est une décision du
+# propriétaire, pas un détail de mise en page : on la verrouille pour qu'une retouche ne l'efface pas
+# sans qu'on s'en aperçoive.
+controle("l'application est signée José Ledanite", "José Ledanite" in page)
+code, corps_conf = get("/confidentialite")
+conf = corps_conf.decode(errors="replace")
+controle("la page de confidentialité est signée aussi", "José Ledanite" in conf)
+controle("le manifeste porte la signature", "José Ledanite" in json.dumps(m, ensure_ascii=False))
 
 srv.shutdown()
 print(f"\n{'✅' if not rates else '❌'} {len(reussis)} contrôles verts, {len(rates)} échec(s)")

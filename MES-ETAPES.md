@@ -11,7 +11,7 @@ seules choses que je ne peux pas faire à sa place, parce qu'elles demandent son
    *(Le mot de passe se tape chez Facebook, jamais ailleurs.)*
 2. En haut à droite : **Mes applis** → **Créer une appli**.
 3. Choisir **« Autre »** puis **Business** — c'est le type qui donne accès à WhatsApp plus tard.
-4. **Nom de l'appli** : `Mon Audit` · **E-mail de contact** : le sien.
+4. **Nom de l'appli** : `Pubmeta` · **E-mail de contact** : le sien.
 5. Dans le tableau de bord → **Paramètres de l'appli** → **Général**. La page affiche deux choses :
    - **Identifiant de l'appli** (une longue suite de chiffres)
    - **Clé secrète** (cliquer sur *Afficher*)

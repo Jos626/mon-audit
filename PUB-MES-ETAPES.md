@@ -1,6 +1,6 @@
 # Pubmeta — créer mes publicités : ce que José fait, et ce que fait la machine
 
-**L'outil s'appelle Pubmeta** (renommé le 10/10/2026 — c'était « Mon Audit »).
+**L'outil s'appelle Pubmeta** (renommé le 10/10/2026 — c'était « Pubmeta »).
 Signé : *Pubmeta — par José Ledanite*.
 
 ---

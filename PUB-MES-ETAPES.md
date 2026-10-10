@@ -1,70 +1,63 @@
-# Mettre une pub en ligne tout seul — la seule chose que je ne peux pas faire à ta place
+# Pubmeta — créer mes publicités : ce que José fait, et ce que fait la machine
 
-L'outil est prêt : il écrit la publicité, calcule le budget par jour, traduit ta cible, et sait la
-créer dans ton compte. **Il ne lui manque qu'une chose : le droit de dépenser à ta place.** Ce droit
-s'appelle un **jeton** — une clé que TU donnes, que tu peux retirer quand tu veux. Ton mot de passe
-Facebook n'est jamais demandé, ni ici ni ailleurs.
-
-Deux chemins. Le premier pour essayer **tout de suite**, le second pour que ça tourne **tous les jours**.
+**L'outil s'appelle Pubmeta** (renommé le 10/10/2026 — c'était « Mon Audit »).
+Signé : *Pubmeta — par José Ledanite*.
 
 ---
 
-## Chemin A — Essayer aujourd'hui (jeton d'une heure)
+## 1. Le geste : UN bouton, et il n'y a rien à chercher
 
-1. Va sur **`developers.facebook.com/tools/explorer`** (connecté avec le compte de tes pages).
-2. En haut à droite, dans **« Application Meta »**, choisis **`Mon audit`**.
-3. Dans **« Autorisations »**, ajoute ces trois-là :
-   - `ads_management` (gérer les annonces)
-   - `pages_show_list` (voir mes pages)
-   - `pages_manage_ads` (gérer les pubs de la page)
-4. Clique sur **« Générer un jeton d'accès »**.
-5. **Copie le jeton** (il commence par `EAA…`) et **envoie-le moi ici**, comme tu m'envoies un message.
+Ouvre **https://mon-audit.onrender.com** et appuie sur le bouton vert
+**« Créer mes publicités »**.
 
-⚠️ Ce jeton **meurt au bout d'une heure** : parfait pour vérifier que la chaîne fonctionne, pas pour
-l'usage quotidien.
+On te demande :
+1. d'**autoriser** (les pages de Facebook : ton mot de passe ne passe jamais par nous) ;
+2. de **choisir ton compte publicitaire** dans une liste — la liste est remplie automatiquement,
+   tu ne cherches aucun identifiant ;
+3. de **choisir ta page** dans une autre liste.
 
----
+C'est tout. **Tu ne vois jamais un jeton, tu ne copies rien.**
 
-## Chemin B — Pour de vrai, tous les jours (jeton durable)
+> ⚠️ Si tu n'as jamais appuyé sur DÉMARRER dans ton bot Telegram, ton téléphone ne pourra pas être
+> prévenu. Ouvre la conversation du bot et appuie sur DÉMARRER une fois.
 
-C'est le même genre de jeton, mais rattaché à une **identité automatique** de ton entreprise : il ne
-périme pas au bout d'une heure, et il n'est lié à aucun mot de passe.
+## 2. Ce qui se passe pendant ce temps (et qui explique le bouton)
 
-1. Va sur **`business.facebook.com`** → **Paramètres de l'entreprise**.
-2. Dans le menu, choisis **« Utilisateurs » → « Utilisateurs système »**.
-3. **Ajouter** → nom : `Publication auto` → rôle : **Admin** (ou Employé).
-4. Sélectionne `Publication auto` → **« Générer un jeton »** :
-   - **Application** : `Mon audit`
-   - **Coche** : `ads_management`, `pages_show_list`, `pages_manage_ads`, `business_management`
-   - **Générer**. ⚠️ Le jeton ne s'affiche **qu'une seule fois** : copie-le et envoie-le moi.
-5. **Assigne les actifs** à `Publication auto` (bouton « Ajouter des actifs ») :
-   - ton **compte publicitaire** → avec « Gérer les campagnes »
-   - ta **page Facebook** → avec « Créer du contenu »
+| Étape | Ce qui se passe | Pourquoi |
+|---|---|---|
+| Tu autorises | Facebook rend un code au serveur | ton mot de passe reste chez Facebook |
+| Le serveur échange | le code devient un **jeton de longue durée** (≈ 60 jours) | sinon il faudrait recommencer chaque heure |
+| Le serveur lit | tes **comptes publicitaires** et tes **pages** | pour te les présenter en liste |
+| Tu choisis | le compte et la page | aucun identifiant à recopier |
+| Le tout part | par **Telegram**, sur ton téléphone | c'est le canal privé déjà en place |
+| Ton téléphone installe | une tâche vérifie toutes les **10 minutes** | tu n'as rien à faire, et c'est silencieux si rien n'est en attente |
 
-Sans l'étape 5, le jeton existe mais n'a le droit sur rien : c'est l'erreur la plus fréquente.
+Les droits demandés sont : **gérer tes annonces**, voir la liste de tes pages, **publier au nom de ta
+page**. Tu peux retirer cet accès quand tu veux, dans tes réglages Facebook.
 
----
+## 3. Créer une publicité
 
-## Ce que je fais dès que j'ai le jeton
+Tu donnes cinq choses : **l'image ou la vidéo**, **ton idée de texte**, le **budget**, la **durée**,
+la **cible** — par exemple :
 
-Je lance `meta-choisir.py` : il te liste **tes comptes publicitaires** et **tes pages**, numérotés.
-Tu me réponds « 1 et 2 » — et c'est fini, les réglages sont rangés dans un fichier protégé
-(droits 600, comme les autres secrets).
+    photo.jpg · « un VPN pour jouer à eFootball sans décalage » ·
+    15 000 F · 10 jours · hommes 18-35 ans Abidjan, intéressés par eFootball
 
-Ensuite, à chaque publicité, l'outil :
+L'outil écrit alors les textes (gratuitement), calcule le budget par jour, traduit la cible, et met
+la publicité en ligne.
 
-1. **écrit les textes** (modèle gratuit, la clé est déjà sur ton téléphone) ;
-2. **vérifie** : visuel reconnu, budget, durée, destination, cible (et refuse au-delà du plafond) ;
-3. **envoie** chez Meta : campagne → ensemble → annonce ;
-4. **relit** ce qui a été créé et **compare le budget au montant voulu** — et **si le montant relu
-   n'est pas le bon, il met TOUT en pause tout seul**, immédiatement, plutôt que de laisser brûler
-   un budget faux. C'est la protection la plus importante, parce que tu as choisi la mise en ligne
-   automatique.
+## 4. Les garde-fous, et c'est volontaire
 
-## Le plafond de sécurité, et comment le changer
+- **Plafond de 100 000 F** par publicité : au-delà, l'outil refuse. Une virgule mal placée
+  (« 500 000 » au lieu de « 5 000 ») ne peut donc pas partir toute seule. Demande-le moi si tu veux
+  le relever.
+- **Le budget est relu après création**, chez Meta. Si le montant relu n'est pas le montant voulu,
+  **tout est mis en pause immédiatement** — parce que tu as choisi la mise en ligne automatique, et
+  qu'une publicité qui part au centuple doit se couper en dix secondes, pas dans la soirée.
+- **La monnaie compte** : en euro, Meta compte en centimes (le budget est multiplié par 100) ; en
+  franc CFA, il n'y a pas de centime. C'est la devise de TON compte qui décide, et elle est relue.
 
-Par défaut, une publicité **au-dessus de 100 000 F CFA est refusée** par le moteur. C'est ce qui
-empêche une virgule mal placée (« 500 000 » au lieu de « 5 000 ») de partir telle quelle.
+## 5. L'audit reste disponible
 
-Pour le relever exprès, c'est une ligne dans `pub.py` (`PLAFOND_BUDGET`) — demande-le moi, je le
-change et je te le dis.
+Le bouton bleu « Continuer avec Facebook » de la page d'accueil fait toujours l'audit
+(« pourquoi ta pub ne vend pas »). Rien n'a été supprimé.

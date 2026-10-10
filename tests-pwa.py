@@ -88,6 +88,13 @@ controle("la page dit au client comment l'installer", "Ajouter à l'écran" in p
 # propriétaire, pas un détail de mise en page : on la verrouille pour qu'une retouche ne l'efface pas
 # sans qu'on s'en aperçoive.
 controle("l'application est signée José Ledanite", "José Ledanite" in page)
+# ⛔ DÉCISIONS DE JOSÉ DU 10/10/2026, verrouillées ici pour qu'une retouche ne les défasse pas :
+#   • le bloc des trois points de réassurance doit RESTER supprimé (« Supprime cette partie ») ;
+#   • la phrase sur le mot de passe, elle, doit RESTER présente (« Oui », à ma proposition).
+# Sans ce contrôle, la prochaine modification de la page repartirait dans un sens ou dans l'autre
+# au hasard, et José aurait à redemander deux fois la même chose.
+controle("le bloc des trois points reste supprimé", "rassurance" not in page)
+controle("la phrase sur le mot de passe est bien là, seule", "mot de passe Facebook ne passe jamais" in page)
 code, corps_conf = get("/confidentialite")
 conf = corps_conf.decode(errors="replace")
 controle("la page de confidentialité est signée aussi", "José Ledanite" in conf)

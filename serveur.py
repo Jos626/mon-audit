@@ -203,6 +203,8 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
      padding:17px 20px;border-radius:14px;box-shadow:0 10px 22px -10px rgba(24,119,242,.9);
      transition:transform .12s ease,box-shadow .12s ease}
  .fb:active{transform:translateY(1px);box-shadow:0 6px 14px -8px rgba(24,119,242,.9)}
+ /* la phrase de réassurance, seule et sobre : ni liste, ni coche, ni encadré */
+ .serment{color:#8896a8;font-size:13.5px;margin:14px 0 0;text-align:center;letter-spacing:.1px}
  .fb svg{width:22px;height:22px;fill:#fff;flex:none}
  .trait{height:1px;background:#eef2f7;margin:24px 0 16px}
  .petit{color:#8896a8;font-size:12.5px;line-height:1.6;margin:0 0 10px}
@@ -221,9 +223,13 @@ Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.<
   3.7-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>
   Continuer avec Facebook
 </a>
+<!-- ⛔⛔ LES TROIS POINTS NE REVIENNENT PAS (José les a fait retirer le 10/10/2026 : « Supprime cette
+ partie »). Seule CETTE phrase revient, et parce qu'il l'a demandée explicitement le même soir : c'est
+ la phrase qui rassure au moment précis où un client hésite à cliquer. Une phrase, pas une liste, pas
+ de coches. -->
+<p class="serment">🔒 Ton mot de passe Facebook ne passe jamais par ici.</p>
 <!-- ⛔ LE BLOC DES TROIS POINTS A ÉTÉ RETIRÉ LE 10/10/2026, SUR DEMANDE DE JOSÉ
  (capture annotée : « Supprime cette partie »). On ne le réintroduit pas sans son accord. -->
-<div class="trait"></div>
 <p class="petit">📱 Pour la garder sous la main : menu ⋮ de ton navigateur →
 « Ajouter à l'écran d'accueil ». Elle s'ouvrira comme une application.</p>
 <p class="pied">Tes données restent les tiennes — <a href="/confidentialite">confidentialité</a></p>

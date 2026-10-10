@@ -129,6 +129,14 @@ except RuntimeError as erreur:
     verifier("le message précis est conservé", "paramètre budget est invalide" in texte, texte[:80])
     verifier("le champ fautif est conservé", "targeting" in texte, texte[:80])
 
+print("\n=== 6. Le budget est comparé dans la MÊME unité ===")
+print("    (le compte est en dollars, José pense en francs : 256 centimes valent 2,56 $, pas 1 500 F)")
+verifier("256 centimes correspondent au budget envoyé", publication.budget_correspond(256, "256", 100))
+verifier("un budget relu à zéro n'est jamais accepté", not publication.budget_correspond(256, 0, 100))
+verifier("un écart réel est bien détecté", not publication.budget_correspond(256, "999", 100),
+         "un budget 4 fois trop élevé passerait inaperçu")
+verifier("le franc CFA n'a pas de sous-unité", publication.budget_correspond(1500, "1500", 1))
+
 print(f"\n=== RÉSULTAT : {len(reussites)} réussite(s), {len(echecs)} échec(s) ===")
 if echecs:
     for nom in echecs:

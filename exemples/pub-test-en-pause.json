@@ -1,0 +1,45 @@
+{
+  "object_story_id": "104084798748794_1091154536706350",
+  "idee": "nappes et linge de table importes (publication deja sur la page)",
+  "visuel": {
+    "type": "image",
+    "chemin": "exemples/visuel-test.jpg",
+    "poids": 34010,
+    "erreur": null
+  },
+  "cible": {
+    "pays": [
+      "CI"
+    ],
+    "villes": [
+      "Abidjan"
+    ],
+    "age_min": 25,
+    "age_max": 45,
+    "sexe": "femmes",
+    "langues": [
+      "fr"
+    ],
+    "interets": [],
+    "texte_original": "femmes 25-45 ans Abidjan",
+    "non_compris": []
+  },
+  "destination": "https://www.facebook.com/104084798748794",
+  "budget": {
+    "total": 15000,
+    "journalier": 1500,
+    "devise": "XOF"
+  },
+  "duree": {
+    "jours": 10
+  },
+  "textes": {
+    "accroche": "Vous cherchez quelle couleur pour votre table ?",
+    "principal": "Nos nappes et linges de table importés habillent votre intérieur en un geste. Un entretien facile, un style qui dure.",
+    "titre": "Nappes et linge de table",
+    "description": "Importés, élégants, faciles à entretenir.",
+    "appel": "En savoir plus"
+  },
+  "textes_par_modele": false,
+  "bloquants": []
+}

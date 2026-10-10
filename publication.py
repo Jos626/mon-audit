@@ -152,6 +152,21 @@ def televerser_image(chemin_image, reglages):
     return list(images.values())[0]["hash"]
 
 
+def budget_correspond(budget_envoye, budget_relu_brut, facteur):
+    """Le budget relu chez Meta est-il bien celui qu'on a envoyé ?
+
+    ⛔ ISOLÉ DANS UNE FONCTION POUR ÊTRE TESTÉ (faute du 10/10/2026) : Meta relit en unité MINIMALE
+    (256 centimes) tandis que la publicité raisonne en FRANCS (1 500). Comparer les deux faisait
+    couper la publicité à chaque fois, à tort. Un garde-fou qui crie au loup finit par être ignoré —
+    donc il se teste comme le reste.
+    """
+    if not budget_relu_brut:
+        return False
+    attendu = budget_envoye / facteur
+    relu = int(budget_relu_brut) / facteur
+    return abs(relu - attendu) <= max(0.01, attendu * 0.01)
+
+
 # ---------------------------------------------------------------------------- la mise en ligne
 def verifier_acces(reglages):
     """Avant de créer quoi que ce soit : le compte répond-il, et dans quelle devise ?"""
@@ -334,12 +349,25 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
     journal_des_etapes.append(f"ensemble créé : {ensemble_id}")
 
     lien = publicite["destination"]
-    if publicite["visuel"]["type"] == "image":
+    # ⚠️ DEUX FAÇONS DE FOURNIR LE CONTENU (10/10/2026) :
+    #   - la voie normale : l'outil FABRIQUE la publication (image + textes) — mais Meta la refuse
+    #     tant que l'application est en « développement » : « le contenu a été créé par une
+    #     application en cours de développement, elle doit être publique » ;
+    #   - la voie de secours, qui fonctionne MÊME en développement : RÉUTILISER une publication déjà
+    #     sur la Page. Meta n'a alors rien à créer, donc rien à refuser. C'est ce qui permet de créer
+    #     une publicité de test (en pause) sans rien changer au tableau de bord Meta.
+    oeuvre_existante = reglages.get("object_story_id") or publicite.get("object_story_id")
+    if oeuvre_existante:
+        reglages_creation = {"name": f"Pub — {nom}", "object_story_id": oeuvre_existante}
+        journal_des_etapes.append(f"contenu réutilisé (publication {oeuvre_existante})")
+    elif publicite["visuel"]["type"] == "image":
         histoire = {"page_id": reglages["page_id"], "link_data": {
             "link": lien, "message": publicite["textes"]["principal"],
             "name": publicite["textes"]["titre"], "description": publicite["textes"]["description"],
             "image_hash": nom_image,
             "call_to_action": {"type": "LEARN_MORE", "value": {"link": lien}}}}
+        reglages_creation = {"name": f"Pub — {nom}",
+                             "object_story_spec": json.dumps(histoire, ensure_ascii=False)}
     else:
         # Pour une vidéo, Meta exige l'identifiant renvoyé par le téléversement ; il est fourni
         # par le module vidéo (voir televerser_video), sinon on refuse plutôt que d'inventer.
@@ -350,10 +378,10 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
             "video_id": reglages["video_id"], "message": publicite["textes"]["principal"],
             "title": publicite["textes"]["titre"], "image_url": publicite["textes"].get("miniature"),
             "call_to_action": {"type": "LEARN_MORE", "value": {"link": lien}}}}
+        reglages_creation = {"name": f"Pub — {nom}",
+                             "object_story_spec": json.dumps(histoire, ensure_ascii=False)}
     creation_id = creer_et_verifier(
-        f"{reglages['compte_publicitaire']}/adcreatives",
-        {"name": f"Pub — {nom}", "object_story_spec": json.dumps(histoire, ensure_ascii=False)},
-        reglages, "créatif")
+        f"{reglages['compte_publicitaire']}/adcreatives", reglages_creation, reglages, "créatif")
     journal_des_etapes.append(f"annonce créée (creative) : {creation_id}")
 
     annonce_id = creer_et_verifier(f"{reglages['compte_publicitaire']}/ads", {
@@ -365,10 +393,15 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
     # --------------------------------------------------------------------------------- RElecture
     relu = appel(ensemble_id, {"fields": "daily_budget,lifetime_budget,end_time,status"}, reglages)
     budget_relu = int(relu.get("daily_budget") or 0) / facteur
+    # ⚠️ LA COMPARAISON SE FAIT DANS LA MÊME UNITÉ (voir budget_correspond) : Meta relit en unité
+    # minimale (256 centimes), la publicité pense en FRANCS (1 500). Comparer les deux faisait crier
+    # au loup à chaque fois.
     verdict = {"etapes": journal_des_etapes, "campagne": campagne_id, "ensemble": ensemble_id,
                "annonce": annonce_id, "creative": creation_id, "devise": devise,
-               "budget_envoye": budget_api, "budget_relu": budget_relu, "statut": relu.get("status"),
-               "correspond": abs(budget_relu - publicite["budget"]["journalier"]) <= 1}
+               "budget_envoye": budget_api, "budget_relu": budget_relu,
+               "budget_fcfa": publicite["budget"]["journalier"],
+               "statut": relu.get("status"),
+               "correspond": budget_correspond(budget_api, relu.get("daily_budget"), facteur)}
 
     if not verdict["correspond"]:
         # ⛔ LE GARDE-FOU QUI COMPTE : si le montant relu n'est pas celui voulu, on coupe TOUT, tout
@@ -379,12 +412,13 @@ def mettre_en_ligne(publicite, reglages, en_ligne=True):
             except RuntimeError:
                 pass
         verdict["coupe"] = True
-        consigner(f"STOP : budget relu {budget_relu} {devise} au lieu de "
-                  f"{publicite['budget']['journalier']} {devise}. Tout a été mis en pause.")
+        consigner(f"STOP : budget relu {budget_relu} {devise} au lieu de {budget_api / facteur} "
+                  f"{devise} ({publicite['budget']['journalier']} F). Tout a été mis en pause.")
     else:
         consigner(f"Pub diffusée : campagne {campagne_id} · ensemble {ensemble_id} · "
-                  f"annonce {annonce_id} · {budget_relu} {devise}/jour pendant "
-                  f"{publicite['duree']['jours']} jours")
+                  f"annonce {annonce_id} · {budget_relu} {devise}/jour "
+                  f"({publicite['budget']['journalier']} F) pendant {publicite['duree']['jours']} "
+                  "jours")
     return verdict
 
 

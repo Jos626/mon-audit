@@ -80,9 +80,15 @@ DROITS_AUDIT = ("ads_read", "business_management", "pages_show_list", "pages_rea
 # ⛔⛔ POUR CREER ET DIFFUSER DES PUBLICITES, IL FAUT LE DROIT DE *GERER*, PAS SEULEMENT DE LIRE.
 # José, le 10/10/2026 : « Crée un bouton qui génère des jetons. Aucun débutant n'ira chercher lui-même
 # le jeton. » Ce parcours remplace l'explorateur de Meta par UN appui.
-# ⚠️ « pages_manage_ads » est exigé par Meta pour publier au nom d'une page : sans lui, le dialogue
-# s'ouvre mais la création de l'annonce est refusée.
-DROITS_PUBLICATION = ("ads_management", "business_management", "pages_show_list", "pages_manage_ads")
+#
+# ⚠️⚠️ « pages_manage_ads » A ETE RETIREE LE 10/10/2026 — ELLE BLOQUAIT TOUT LE DIALOGUE.
+# José l'a constaté sur son téléphone : « Invalid Scopes: pages_manage_ads ». Une seule permission que
+# l'application ne peut pas demander fait échouer TOUTE la page d'autorisation — le bouton ne mène
+# nulle part, et le client, lui, ne verrait même pas le message (il n'est montré qu'aux développeurs).
+# La documentation de Meta est claire : pour « créer et gérer des annonces », cette permission est
+# OPTIONNELLE ; les permissions REQUISES sont celles ci-dessous. On demande le strict nécessaire.
+DROITS_PUBLICATION = ("ads_management", "ads_read", "business_management", "pages_show_list",
+                      "pages_read_engagement")
 
 
 def url_de_connexion(app_id, adresse_publique, etat, droits=DROITS_AUDIT, page_de_retour="/callback"):

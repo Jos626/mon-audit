@@ -622,13 +622,24 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                     try:
                         texte, erreur = faire_audit(jeton)
                         if erreur or not texte:
+                            print(f"[audit] refus de Facebook : {str(erreur)[:300]}", flush=True)
                             _ranger(cle, etat="erreur", message=erreur or "L'audit est revenu vide.")
                         else:
                             _ranger(cle, etat="pret", texte=texte)
-                    except Exception as e:                     # jamais de fil qui meurt en silence
+                    except Exception:
+                        # ⛔⛔ CE BLOC A ÉTÉ CORRIGÉ LE 10/10/2026, APRÈS LE PREMIER VRAI ESSAI DE JOSÉ.
+                        # Il avait lu : « Une erreur inattendue est survenue (ErreurMeta) » — un
+                        # message qui ne dit RIEN, avec un mot de développeur en prime. Et quand j'ai
+                        # ouvert les journaux de Render pour comprendre : AUCUNE TRACE. Mon code
+                        # attrapait l'erreur, la transformait en phrase vague et la jetait.
+                        # Deux corrections, et les deux comptent : on TRACE (pour pouvoir réparer),
+                        # et on parle au client en français, sans nom de classe.
+                        import traceback as _tb
+                        print("[audit] ERREUR INATTENDUE\n" + _tb.format_exc(), flush=True)
                         _ranger(cle, etat="erreur",
-                                message=f"Une erreur inattendue est survenue ({type(e).__name__}). "
-                                        f"Relance l'audit, et si ça recommence, dis-le à Laura.")
+                                message="Quelque chose n'a pas répondu comme prévu chez Facebook. "
+                                        "Réessaie dans un instant — et si ça recommence, dis-le à "
+                                        "Laura, elle verra exactement ce qui s'est passé.")
 
                 threading.Thread(target=_auditer, daemon=True).start()
                 self.send_response(303)

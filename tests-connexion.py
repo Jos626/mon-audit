@@ -168,3 +168,24 @@ if _ko:
     print(f"❌ {_ko} problème(s).")
     sys.exit(1)
 print(f"✅ {_ok} contrôles verts — aucune demande de mot de passe, et un jeton décrit avant usage.")
+
+
+# ════════════════════ LA LEÇON DU 10/10/2026 ════════════════════
+# José a connecté son compte : Facebook a accepté, puis la page a affiché « Une erreur inattendue
+# est survenue (ErreurMeta) ». L'audit lisait l'AUDIENCE de la page, qui exige read_insights — la
+# permission qu'il avait fallu retirer pour que la connexion marche. Une section de confort tuait
+# tout le rapport. Ces deux contrôles empêchent que ça revienne.
+print()
+print("⛔ GARDE-FOU : une section FACULTATIVE ne doit jamais emporter le rapport")
+_original = connexion.audience_page
+try:
+    def _explose(*a, **k):
+        raise connexion.ErreurMeta("Invalid Scopes: read_insights")
+    connexion.audience_page = _explose
+    _soucis = []
+    _res = connexion._section_facultative("l'audience de la page", connexion.audience_page,
+                                          "jeton", "page", defaut={}, soucis=_soucis)
+    print("   ✅ l'audience en panne ne fait pas tomber l'audit → résultat :", _res)
+    print("   ✅ ...et le problème est annoncé :", _soucis)
+finally:
+    connexion.audience_page = _original

@@ -229,23 +229,58 @@ def audience_page(jeton, page_id):
     return sortie
 
 
+def _section_facultative(nom, fonction, *args, defaut=None, soucis=None):
+    """Appelle une section FACULTATIVE de l'audit sans jamais faire tomber le rapport.
+
+    ⛔ LA LEÇON, ET ELLE A COÛTÉ UN VRAI ESSAI RATÉ DEVANT LE PROPRIÉTAIRE (10/10/2026).
+    José a connecté son compte, Facebook a accepté, et la page a affiché : « Une erreur inattendue
+    est survenue (ErreurMeta) ». Cause : l'audit lisait l'AUDIENCE de la page, qui exige
+    read_insights — précisément la permission qu'il avait fallu RETIRER pour que la connexion
+    fonctionne. Une section de confort emportait tout le rapport avec elle.
+
+    Règle qui en découle : ce qui est indispensable (les statistiques publicitaires) a le droit de
+    faire échouer l'audit. Ce qui est un BONUS (audience, commentaires, liste des pages) se contente
+    d'être annoncé comme indisponible, et le rapport continue. Un rapport incomplet et honnête vaut
+    mille fois un rapport mort.
+    """
+    try:
+        return fonction(*args)
+    except Exception as e:
+        detail = f"{type(e).__name__}: {str(e)[:200]}"
+        print(f"[audit] section facultative « {nom} » indisponible — {detail}", flush=True)
+        if soucis is not None:
+            soucis.append(f"{nom} : indisponible")
+        return defaut
+
+
 def audit_complet(jeton, periode="last_30d", page_id=None):
     """Tout l'audit, depuis le compte du client : jetons -> données -> lignes prêtes pour le moteur."""
     etat = verifier_jeton(jeton)
     resultat = {"etat_du_jeton": etat, "comptes": [], "lignes": [], "commentaires": [],
-                "audience": {}, "pages": []}
+                "audience": {}, "pages": [], "soucis": []}
     if not etat["suffisant_pour_auditer"]:
         # ON S'ARRÊTE LÀ, ET ON LE DIT. Continuer donnerait un rapport vide que le client lirait comme
         # « tout va bien » — le pire des mensonges, parce qu'il est silencieux.
         return resultat
 
+    print(f"[audit] jeton accepté pour {etat.get('qui')} — autorisations : "
+          f"{', '.join(etat.get('droits') or []) or 'aucune'}", flush=True)
+
+    # ── LE CŒUR : sans ça, il n'y a pas d'audit, et on doit le dire clairement
     resultat["comptes"] = comptes_publicitaires(jeton)
+    print(f"[audit] {len(resultat['comptes'])} compte(s) publicitaire(s) accessible(s)", flush=True)
     for compte in resultat["comptes"]:
         resultat["lignes"] += statistiques(jeton, "act_" + compte["account_id"], periode)
+    print(f"[audit] {len(resultat['lignes'])} ligne(s) de statistiques", flush=True)
 
-    resultat["pages"] = pages(jeton)
+    # ── LES BONUS : jamais au prix du rapport
+    resultat["pages"] = _section_facultative("la liste des pages", pages, jeton,
+                                             defaut=[], soucis=resultat["soucis"])
     cible = page_id or (resultat["pages"][0]["id"] if resultat["pages"] else None)
     if cible:
-        resultat["commentaires"] = commentaires(jeton, cible)
-        resultat["audience"] = audience_page(jeton, cible)
+        resultat["commentaires"] = _section_facultative(
+            "les commentaires", commentaires, jeton, cible, defaut=[], soucis=resultat["soucis"])
+        resultat["audience"] = _section_facultative(
+            "l'audience de la page", audience_page, jeton, cible, defaut={},
+            soucis=resultat["soucis"])
     return resultat

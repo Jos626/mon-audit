@@ -481,6 +481,11 @@ def page_de_choix(identifiant, comptes, pages):
 
 
 PUBLICATIONS = {}          # identifiant -> {jeton, comptes, pages}, le temps du parcours
+# ⚠️ LES REGLAGES ATTENDENT ICI QUE LE TELEPHONE VIENNE LES PRENDRE. C'est ce qui évite le
+# copier-coller : l'utilisateur ne voit jamais un jeton, et la machine qui publie les publicités le
+# récupère elle-même (voir recuperer-reglages.py côté téléphone). Consommés une seule fois, puis
+# effacés — un jeton qui traîne est un jeton qui fuite.
+REGLAGES_A_RECUPERER: dict = {"en_attente": None}
 
 
 def envoyer_telegram(jeton_bot, chat, texte):
@@ -728,8 +733,8 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
             self.end_headers()
             self.wfile.write(html.encode())
 
-        def _envoyer_octets(self, donnees, type_mime):
-            self.send_response(200)
+        def _envoyer_octets(self, donnees, type_mime, code=200):
+            self.send_response(code)
             self.send_header("Content-Type", type_mime)
             self.send_header("Content-Length", str(len(donnees)))
             self.end_headers()
@@ -820,10 +825,9 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                            f"Compte : {reglages['compte_nom']} ({reglages['compte_publicitaire']})\n"
                            f"Page : {reglages['page_nom']} ({reglages['page_id']})\n"
                            f"Devise : {reglages['devise']}\n\n"
-                           "L'outil sur ton téléphone va s'installer tout seul avec ces réglages.\n\n"
-                           "PUB-CONFIG "
-                           + json.dumps(reglages, ensure_ascii=False))
+                           "Ton outil s'installe tout seul — tu n'as rien à copier.")
                 envoye = envoyer_telegram(jeton_bot, fiche["chat"], message)
+                REGLAGES_A_RECUPERER["en_attente"] = reglages
                 del PUBLICATIONS[parametres.get("id", "")]
                 suite = ("Tes réglages sont enregistrés : tu peux créer une publicité tout de suite."
                          if envoye else
@@ -831,6 +835,21 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                          "par Telegram. Ouvre la conversation avec ton bot et appuie sur DÉMARRER, "
                          "puis recommence — ça prend dix secondes.")
                 self._envoyer_html(PAGE_PUB_FIN.replace("__MESSAGE__", suite))
+                return
+
+            if analyse.path == "/reglages":
+                # ⚠️ RÉSERVÉ À LA MACHINE DE JOSÉ : sans le secret partagé, rien du tout. Le jeton
+                # part, et il ne reste RIEN sur le serveur (consommé une seule fois).
+                if not parametres.get("secret") or \
+                        not hmac.compare_digest(parametres.get("secret", ""), secret_liens):
+                    self._envoyer_octets(json.dumps({"erreur": "secret invalide"}).encode(),
+                                         "application/json; charset=utf-8", 403)
+                    return
+                reglages = REGLAGES_A_RECUPERER.get("en_attente")
+                REGLAGES_A_RECUPERER["en_attente"] = None
+                self._envoyer_octets(
+                    json.dumps({"reglages": reglages}, ensure_ascii=False).encode(),
+                    "application/json; charset=utf-8")
                 return
 
             if analyse.path in ("/", "/index.html"):

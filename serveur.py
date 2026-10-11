@@ -239,6 +239,7 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .serment{color:#8896a8;font-size:13.5px;margin:14px 0 0;text-align:center;letter-spacing:.1px}
  .fb svg{width:22px;height:22px;fill:#fff;flex:none}
  .fb.pub{background:#16a34a;margin-top:12px;box-shadow:0 10px 22px -10px rgba(22,163,74,.9)}
+.fb.pub.verrouille{background:#cbd5e1;color:#64748b;box-shadow:none;pointer-events:none}
  .trait{height:1px;background:#eef2f7;margin:24px 0 16px}
  .petit{color:#8896a8;font-size:12.5px;line-height:1.6;margin:0 0 10px}
  .pied{color:#a3aebd;font-size:12px;margin:14px 0 0}
@@ -247,7 +248,6 @@ PAGE_ACCUEIL = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
  .signature b{color:#64748b;font-weight:600}
 </style></head><body><div class="carte">
 <img class="logo" src="/icone-512.png" alt="Perform" width="132" height="132">
-<span class="etiquette">100 % gratuit</span>
 <h1>Pourquoi ta pub ne vend pas</h1>
 <p class="accroche">Je lis ton <b>compte publicitaire</b> et les <b>paroles de tes clients</b>.
 Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.</p>
@@ -261,12 +261,7 @@ Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.<
  la phrase qui rassure au moment précis où un client hésite à cliquer. Une phrase, pas une liste, pas
  de coches. -->
 <p class="serment">🔒 Ton mot de passe Facebook ne passe jamais par ici.</p>
-<!-- LE SECOND BOUTON : la création de publicités (mission ajoutée le 10/10/2026). Il mène au parcours
-     qui demande les droits de GÉRER les annonces — un seul appui, puis deux listes à choisir. -->
-<a class="fb pub" href="__LIEN_PUB__">
-  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5zm0 7.2L4.6 5.9 12 2.2l7.4 3.7L12 9.2zM2 12l10 5 10-5-0.9-.5L12 15.6 2.9 11.5 2 12zm0 5 10 5 10-5-.9-.5L12 20.6 2.9 16.5 2 17z"/></svg>
-  Créer mes publicités
-</a>
+__BOUTON_PUB__
 <p class="petit" style="margin-top:10px">Nouveau : je fabrique la publicité et je la mets en ligne
 — ton image, ton idée, ton budget, ta durée, ta cible.</p>
 <!-- ⛔ LE BLOC DES TROIS POINTS A ÉTÉ RETIRÉ LE 10/10/2026, SUR DEMANDE DE JOSÉ
@@ -276,6 +271,16 @@ Puis je te dis où part ton argent, ce qui bloque — et ce qu'il faut changer.<
 <p class="pied">Tes données restent les tiennes — <a href="/confidentialite">confidentialité</a></p>
 <p class="signature">Perform — par <b>José Ledanite</b></p>
 </div></body></html>"""
+
+BOUTON_PUB_ACTIF = """<a class="fb pub" href="__LIEN_PUB__">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5zm0 7.2L4.6 5.9 12 2.2l7.4 3.7L12 9.2zM2 12l10 5 10-5-0.9-.5L12 15.6 2.9 11.5 2 12zm0 5 10 5 10-5-.9-.5L12 20.6 2.9 16.5 2 17z"/></svg>
+  Créer mes publicités
+</a>"""
+
+BOUTON_PUB_VERROUILLE = """<a class="fb pub verrouille" aria-disabled="true">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5zm0 7.2L4.6 5.9 12 2.2l7.4 3.7L12 9.2zM2 12l10 5 10-5-0.9-.5L12 15.6 2.9 11.5 2 12zm0 5 10 5 10-5-.9-.5L12 20.6 2.9 16.5 2 17z"/></svg>
+  Connecte-toi d'abord avec Facebook
+</a>"""
 
 PAGE_CONFIDENTIALITE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Confidentialité — Perform</title>
@@ -589,6 +594,7 @@ def page_du_contenu(identifiant, index_compte, index_page, fiche):
 
 
 PUBLICATIONS = {}          # identifiant -> {jeton, comptes, pages}, le temps du parcours
+CONNEXIONS = {}            # chat_id -> True, une fois la connexion Facebook réussie
 # ⚠️ LES REGLAGES ATTENDENT ICI QUE LE TELEPHONE VIENNE LES PRENDRE. C'est ce qui évite le
 # copier-coller : l'utilisateur ne voit jamais un jeton, et la machine qui publie les publicités le
 # récupère elle-même (voir recuperer-reglages.py côté téléphone). Consommés une seule fois, puis
@@ -1035,8 +1041,11 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                 # CSS : un .format() dessus lèverait une KeyError (page cassée), et un .format() sans
                 # ${} laisserait « __LIEN__ » en clair — le bouton « Continuer avec Facebook » ne
                 # mènerait plus nulle part, exactement le défaut signalé par José.
+                bouton_pub = (BOUTON_PUB_ACTIF if CONNEXIONS.get(parametres.get("chat", ""))
+                              else BOUTON_PUB_VERROUILLE)
                 self._envoyer_html(PAGE_ACCUEIL.replace(
                     "__LIEN__", url_de_connexion(app_id, adresse_publique, etat)).replace(
+                    "__BOUTON_PUB__", bouton_pub).replace(
                     "__LIEN_PUB__", "/publicite?state=" + urllib.parse.quote(etat)))
                 return
 
@@ -1073,6 +1082,7 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                     identifiant = secrets.token_urlsafe(12)
                     PUBLICATIONS[identifiant] = {"jeton": jeton, "comptes": comptes, "pages": pages,
                                                  "chat": chat_id}
+                    CONNEXIONS[chat_id] = True
                     self._envoyer_html(page_de_choix(identifiant, comptes, pages))
                     return
                 if parametres.get("error"):
@@ -1096,6 +1106,7 @@ def fabriquer_serveur(app_id, app_secret, adresse_publique, secret_liens, port=8
                 # est la pire des impressions. On lui donne donc une page qui se met à jour seule.
                 cle = hashlib.sha256((jeton + str(time.time())).encode()).hexdigest()[:24]
                 _ranger(cle, etat="en_cours")
+                CONNEXIONS[chat_id] = True
 
                 def _auditer():
                     try:
